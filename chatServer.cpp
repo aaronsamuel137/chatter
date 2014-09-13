@@ -1,4 +1,3 @@
-// #define _XOPEN_SOURCE_EXTENDED 1
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -14,6 +13,8 @@
 
 extern int errno;
 
+using namespace std;
+
 int errexit(const char *format, ...);
 int updSocket(const char *portnum);
 
@@ -23,9 +24,9 @@ int main(int argc, char**argv)
     struct sockaddr_in servaddr, cliaddr;
     socklen_t len;
     char mesg[MESSAGE_LENGTH];
+    char reply[MESSAGE_LENGTH];
     char *portnum = "32000";
 
-    char roomName[24];
     char *name;
 
     sockfd = updSocket(portnum);
@@ -38,11 +39,12 @@ int main(int argc, char**argv)
         if (strncmp("Start ", mesg, 6) == 0)
         {
             printf("Got Start command\n");
-            strcpy(roomName, mesg);
-            name = strtok(roomName, " ");
-            name = strtok(NULL, "\0");
-            printf("name: %s\n", name);
-            strncpy(mesg, name, strlen(name));
+            string mesgStr = string(mesg);
+            string name = mesgStr.substr(6, mesgStr.size());
+            printf("name: %s\n", name.c_str());
+            strcpy(reply, "Starting chat room: \n\0");
+            // mesg =
+            // strncpy(mesg, name, strlen(name));
             // n = strlen(mesg);
         }
         else if (strncmp("Find ", mesg, 5) == 0)
@@ -55,10 +57,10 @@ int main(int argc, char**argv)
         }
         else
         {
-            strcpy(mesg, "Invalid command. Commands must beign with Start, Find or Terminate\n\0");
+            strcpy(reply, "Invalid command. Commands must beign with Start, Find or Terminate\n\0");
         }
-        n = strlen(mesg);
-        sendto(sockfd, mesg, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+        n = strlen(reply);
+        sendto(sockfd, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
 
         // printf("-------------------------------------------------------\n");
         // mesg[n] = 0;
