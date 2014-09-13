@@ -1,20 +1,6 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <string>
-#include <cstdlib>
-
-#include <sys/errno.h>
-#include <stdarg.h>
-
-#define MESSAGE_LENGTH 256
-#define START_LEN      6
-#define FIND_LEN       5
-#define TERMINATE_LEN  10
+#include "chatutilfunctions.h"
 
 extern int errno;
-
-// using namespace std;
 
 int errexit(const char *format, ...);
 int updSocket(const char *portnum);
@@ -76,20 +62,6 @@ int main(int argc, char**argv)
         n = strlen(reply);
         sendto(sockfd, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
     }
-}
-
-/*------------------------------------------------------------------------
- * errexit - print an error message and exit
- *------------------------------------------------------------------------
- */
-int errexit(const char *format, ...)
-{
-    va_list args;
-
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end(args);
-    exit(1);
 }
 
 int updSocket(const char *portnum)
