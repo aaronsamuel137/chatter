@@ -1,13 +1,15 @@
 #include "chatutilfunctions.h"
 
+#define QLEN 32 // maximum connection queue length
+
 extern int errno;
 
-int errexit(const char *format, ...);
 int updSocket(const char *portnum);
+int sessionSocket();
 
 int main(int argc, char**argv)
 {
-    int sockfd, n;
+    int upd_sock, session_sock, n;
     struct sockaddr_in servaddr, cliaddr;
     socklen_t len;
     char mesg[MESSAGE_LENGTH];
@@ -15,7 +17,7 @@ int main(int argc, char**argv)
     char *portnum = "32000";
     std::string mesg_str, reply_str, s_name;
 
-    sockfd = updSocket(portnum);
+    upd_sock = updSocket(portnum);
 
     for (;;)
     {
@@ -24,7 +26,7 @@ int main(int argc, char**argv)
         memset(&mesg, 0, sizeof(mesg));
 
         len = sizeof(cliaddr);
-        n = recvfrom(sockfd, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
+        n = recvfrom(upd_sock, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
 
         mesg_str = std::string(mesg);
 
@@ -32,6 +34,8 @@ int main(int argc, char**argv)
         {
             s_name = mesg_str.substr(START_LEN, mesg_str.size());
             reply_str = "Starting chat room " + s_name;
+
+            session_sock = sessionSocket();
 
             printf("Got Start command\n");
             printf("chatroom name: %s\n", s_name.c_str());
@@ -60,7 +64,7 @@ int main(int argc, char**argv)
         reply_str.copy(reply, reply_str.size(), 0);
         reply[MESSAGE_LENGTH-1] = '\0';
         n = strlen(reply);
-        sendto(sockfd, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+        sendto(upd_sock, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
     }
 }
 
@@ -102,5 +106,40 @@ int updSocket(const char *portnum)
             printf("New server port number is %d\n", ntohs(sin.sin_port));
         }
     }
+    return s;
+}
+
+/*------------------------------------------------------------------------
+ * sessionSocket - allocate & bind a server socket using TCP
+ *------------------------------------------------------------------------
+ */
+int sessionSocket()
+{
+    struct sockaddr_in sin; /* an Internet endpoint address  */
+    int    s;               /* socket descriptor             */
+
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(0); /* request a port number to be allocated by bind */
+
+    /* Allocate a socket */
+    s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s < 0)
+        errexit("can't create socket: %s\n", strerror(errno));
+
+    /* Bind the socket */
+    if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+        errexit("can't bind: %s\n", strerror(errno));
+    else {
+        socklen_t socklen = sizeof(sin);
+
+        if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
+            errexit("getsockname: %s\n", strerror(errno));
+        printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
+    }
+
+    if (listen(s, QLEN) < 0)
+        errexit("can't listen on %s port: %s\n", ntohs(sin.sin_port), strerror(errno));
     return s;
 }
