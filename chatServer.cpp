@@ -13,7 +13,7 @@
 
 extern int errno;
 
-using namespace std;
+// using namespace std;
 
 int errexit(const char *format, ...);
 int updSocket(const char *portnum);
@@ -39,8 +39,8 @@ int main(int argc, char**argv)
         if (strncmp("Start ", mesg, 6) == 0)
         {
             printf("Got Start command\n");
-            string mesgStr = string(mesg);
-            string name = mesgStr.substr(6, mesgStr.size());
+            std::string mesgStr = std::string(mesg);
+            std::string name = mesgStr.substr(6, mesgStr.size());
             printf("name: %s\n", name.c_str());
             strcpy(reply, "Starting chat room: \n\0");
             // mesg =
