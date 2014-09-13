@@ -1,15 +1,16 @@
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
-#include <string.h>
 #include <string>
 #include <cstdlib>
 
 #include <sys/errno.h>
 #include <stdarg.h>
 
-#define MESSAGE_LENGTH 128
+#define MESSAGE_LENGTH 256
+#define START_LEN      6
+#define FIND_LEN       5
+#define TERMINATE_LEN  10
 
 extern int errno;
 
@@ -26,47 +27,54 @@ int main(int argc, char**argv)
     char mesg[MESSAGE_LENGTH];
     char reply[MESSAGE_LENGTH];
     char *portnum = "32000";
-
-    char *name;
+    std::string mesg_str, reply_str, s_name;
 
     sockfd = updSocket(portnum);
 
     for (;;)
     {
+        // clear the reply and message buffers
+        memset(&reply, 0, sizeof(reply));
+        memset(&mesg, 0, sizeof(mesg));
+
         len = sizeof(cliaddr);
         n = recvfrom(sockfd, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
 
-        if (strncmp("Start ", mesg, 6) == 0)
+        mesg_str = std::string(mesg);
+
+        if (strncmp("Start ", mesg, START_LEN) == 0)
         {
+            s_name = mesg_str.substr(START_LEN, mesg_str.size());
+            reply_str = "Starting chat room " + s_name;
+
             printf("Got Start command\n");
-            std::string mesgStr = std::string(mesg);
-            std::string name = mesgStr.substr(6, mesgStr.size());
-            printf("name: %s\n", name.c_str());
-            strcpy(reply, "Starting chat room: \n\0");
-            // mesg =
-            // strncpy(mesg, name, strlen(name));
-            // n = strlen(mesg);
+            printf("chatroom name: %s\n", s_name.c_str());
         }
-        else if (strncmp("Find ", mesg, 5) == 0)
+        else if (strncmp("Find ", mesg, FIND_LEN) == 0)
         {
-            printf("Find\n");
+            s_name = mesg_str.substr(5, mesg_str.size());
+            reply_str = "Finding chat room " + s_name;
+
+            printf("Got Find command\n");
+            printf("chatroom name: %s\n", s_name.c_str());
         }
-        else if (strncmp("Terminate ", mesg, 10) == 0)
+        else if (strncmp("Terminate ", mesg, TERMINATE_LEN) == 0)
         {
-            printf("Terminate\n");
+            s_name = mesg_str.substr(TERMINATE_LEN, mesg_str.size());
+            reply_str = "Terminating chat room " + s_name;
+
+            printf("Got Terminate command\n");
+            printf("chatroom name: %s\n", s_name.c_str());
         }
         else
         {
-            strcpy(reply, "Invalid command. Commands must beign with Start, Find or Terminate\n\0");
+            reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n\0";
         }
+
+        reply_str.copy(reply, reply_str.size(), 0);
+        reply[MESSAGE_LENGTH-1] = '\0';
         n = strlen(reply);
         sendto(sockfd, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
-
-        // printf("-------------------------------------------------------\n");
-        // mesg[n] = 0;
-        // printf("Received the following:\n");
-        // printf("%s", mesg);
-        // printf("-------------------------------------------------------\n");
     }
 }
 
@@ -115,7 +123,7 @@ int updSocket(const char *portnum)
             errexit("can't bind: %s\n", strerror(errno));
         else
         {
-            int socklen = sizeof(sin);
+            socklen_t socklen = sizeof(sin);
 
             if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
                 errexit("getsockname: %s\n", strerror(errno));
