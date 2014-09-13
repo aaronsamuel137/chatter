@@ -1,4 +1,5 @@
 #include "chatutilfunctions.h"
+#include <unistd.h>
 
 #define QLEN 32 // maximum connection queue length
 
@@ -9,16 +10,20 @@ int sessionSocket();
 
 int main(int argc, char**argv)
 {
-    int upd_sock, session_sock, n;
-    struct sockaddr_in servaddr, cliaddr;
+    int upd_sock, session_sock, session_portnum, n;
+    struct sockaddr_in cliaddr;
     socklen_t len;
+
     char mesg[MESSAGE_LENGTH];
     char reply[MESSAGE_LENGTH];
-    char *portnum = "32000";
+    char portnum_reply[8];
+
+    char *udp_portnum = "32000";
+
     std::string mesg_str, reply_str, s_name;
 
-    upd_sock = updSocket(portnum);
 
+    upd_sock = updSocket(udp_portnum);
     for (;;)
     {
         // clear the reply and message buffers
@@ -35,7 +40,14 @@ int main(int argc, char**argv)
             s_name = mesg_str.substr(START_LEN, mesg_str.size());
             reply_str = "Starting chat room " + s_name;
 
-            session_sock = sessionSocket();
+            // if a new session is created, send the port back to client
+            if (session_portnum = sessionSocket())
+            {
+                std::string port_str = std::to_string(session_portnum);
+                port_str.copy(portnum_reply, port_str.size(), 0);
+                sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+                continue;
+            }
 
             printf("Got Start command\n");
             printf("chatroom name: %s\n", s_name.c_str());
@@ -61,10 +73,10 @@ int main(int argc, char**argv)
             reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n\0";
         }
 
-        reply_str.copy(reply, reply_str.size(), 0);
-        reply[MESSAGE_LENGTH-1] = '\0';
-        n = strlen(reply);
-        sendto(upd_sock, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+        // reply_str.copy(reply, reply_str.size(), 0);
+        // reply[MESSAGE_LENGTH-1] = '\0';
+        // n = strlen(reply);
+        // sendto(upd_sock, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
     }
 }
 
@@ -139,7 +151,18 @@ int sessionSocket()
         printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
     }
 
-    if (listen(s, QLEN) < 0)
-        errexit("can't listen on %s port: %s\n", ntohs(sin.sin_port), strerror(errno));
-    return s;
+    pid_t pid = fork();
+
+    // child process
+    if (pid == 0)
+    {
+        if (listen(s, QLEN) < 0)
+            errexit("can't listen on %s port: %s\n", ntohs(sin.sin_port), strerror(errno));
+        return ntohs(sin.sin_port);
+    }
+    // parent process
+    else
+    {
+        return 0;
+    }
 }
