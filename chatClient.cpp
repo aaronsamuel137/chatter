@@ -26,9 +26,9 @@ int main(int argc, char**argv)
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
+        memset(&recvline, 0, sizeof(recvline));
+
         send_str = std::string(sendline);
-        // s_name = NULL;
-        // message = NULL;
 
         if (send_str.compare(0, 6, "Start ") == 0)
         {
@@ -38,29 +38,29 @@ int main(int argc, char**argv)
                 printf("Error starting chatroom");
             else
             {
-                connect_to_socket(servaddr, portnum);
+                session_sock = connect_to_socket(servaddr, portnum);
                 printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
         }
         else if (send_str.compare(0, 5, "Join ") == 0)
         {
             s_name = get_message(send_str, 5);
+            send_str = "Find " + s_name;
+            strncpy(sendline, send_str.c_str(), sizeof(sendline));
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             if (portnum == -1)
                 printf("Error joining chatroom");
             else
             {
-                connect_to_socket(servaddr, portnum);
+                session_sock = connect_to_socket(servaddr, portnum);
                 printf("You have joined the chat session %s\n", s_name.c_str());
             }
         }
         else if (send_str.compare(0, 7, "Submit ") == 0)
         {
-
-            // memset(&recvline, 0, sizeof(recvline));
-            // n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-            // recvline[n] = 0;
-            // printf("%s", recvline);
+            send(session_sock, sendline, strlen(sendline), 0);
+            printf("Sent: %s", sendline);
+            // printf("%s > ", s_name.c_str());
         }
         else if (send_str.compare(0, 8, "GetNext ") == 0)
         {
@@ -83,13 +83,7 @@ int main(int argc, char**argv)
         {
             printf("Invalid command: %s", sendline);
         }
-        // else
-        // {
-        //     sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
-        // }
-        // n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-        // recvline[n] = 0;
-        // fputs(recvline, stdout);
+        memset(&sendline, 0, sizeof(sendline));
     }
 }
 
@@ -110,13 +104,9 @@ int connect_to_socket(sockaddr_in servaddr, int portnum)
     int session_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (connect(session_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-        errexit("can't connect to %s: %s\n", portnum, strerror(errno));
+        errexit("can't connect to %s\n", portnum, strerror(errno));
 
-    while (1)
-    {
-
-    }
-
+    return session_sock;
     // memset(&recvline, 0, sizeof(recvline));
     // n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
     // recvline[n] = 0;

@@ -35,7 +35,7 @@ int errexit(const char *format, ...)
 
 std::string get_message(std::string input, int start_index)
 {
-    std::string message = input.substr(6, input.size());
+    std::string message = input.substr(start_index, input.size());
     return message.erase(message.find_last_not_of(" \n\r\t") + 1);
 }
 

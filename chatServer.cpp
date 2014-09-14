@@ -12,7 +12,7 @@ void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(const char *portnum);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
 int serveSession(int msock);
-int echo(int fd, std::map<int, std::string> &messages, int &message_index);
+int handle_message(int fd, std::map<int, std::string> &messages, int &message_index);
 
 int main(int argc, char**argv)
 {
@@ -31,7 +31,7 @@ int main(int argc, char**argv)
 
     for (;;)
     {
-        // clear the reply and message buffers
+        // message buffers
         memset(&mesg, 0, sizeof(mesg));
 
         len = sizeof(cliaddr);
@@ -41,10 +41,9 @@ int main(int argc, char**argv)
 
         printf("Got communication: %s", mesg);
 
-        if (strncmp("Start ", mesg, START_LEN) == 0)
+        if (mesg_str.compare(0, 6, "Start ") == 0)
         {
-            s_name = mesg_str.substr(START_LEN, mesg_str.size());
-            s_name.erase(s_name.find_last_not_of(" \n\r\t")+1);
+            s_name = get_message(mesg_str, 6);
 
             int portnum = sessionSocket(upd_sock, cliaddr, s_name);
             if (portnum)
@@ -59,10 +58,9 @@ int main(int argc, char**argv)
                 exit(0);
             }
         }
-        else if (strncmp("Find ", mesg, FIND_LEN) == 0)
+        else if (mesg_str.compare(0, 5, "Find ") == 0)
         {
-            s_name = mesg_str.substr(5, mesg_str.size());
-            s_name.erase(s_name.find_last_not_of(" \n\r\t")+1);
+            s_name = get_message(mesg_str, 5);
 
             printf("Searching for chatroom %s\n", s_name.c_str());
 
@@ -83,10 +81,9 @@ int main(int argc, char**argv)
                 printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
             }
         }
-        else if (strncmp("Terminate ", mesg, TERMINATE_LEN) == 0)
+        else if (mesg_str.compare(0, 10, "Terminate ") == 0)
         {
-            s_name = mesg_str.substr(TERMINATE_LEN, mesg_str.size());
-            s_name.erase(s_name.find_last_not_of(" \n\r\t")+1);
+            s_name = get_message(mesg_str, 10);
 
             reply_str = "Terminating chat room " + s_name;
             printf("Terminating chatroom \"%s\"\n", s_name.c_str());
@@ -248,36 +245,61 @@ int serveSession(int msock)
         {
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
-                printf("Calling echo with socket %d\n", fd);
-                if (echo(fd, messages, message_index) == 0) {
+                printf("Calling handle_message with socket %d\n", fd);
+                if (handle_message(fd, messages, message_index) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
-                // printf("Printing messages:\n");
-                // for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
-                // {
-                //     printf("%d -> %s\n", it->first, it->second.c_str());
-                // }
+                printf("Printing messages:\n");
+                for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
+                {
+                    printf("%d -> %s\n", it->first, it->second.c_str());
+                }
             }
         }
     }
 }
 
-int echo(int fd, std::map<int, std::string> &messages, int &message_index)
+int handle_message(int fd, std::map<int, std::string> &messages, int &message_index)
 {
-    char buf[MESSAGE_LENGTH];
+    char mesg[MESSAGE_LENGTH];
     int cc;
+    // std::string message;
 
-    cc = recv(fd, buf, sizeof(buf), 0);
+    cc = recv(fd, mesg, sizeof(mesg), 0);
 
     if (cc < 0)
-        errexit("echo read: %s\n", strerror(errno));
-    if (cc && write(fd, buf, cc) < 0)
-        errexit("echo write: %s\n", strerror(errno));
+        errexit("handle_message read: %s\n", strerror(errno));
+    if (cc && write(fd, mesg, cc) < 0)
+        errexit("handle_message write: %s\n", strerror(errno));
 
-    printf("Got message: %s", buf);
-    std::string message_str = std::string(buf);
-    messages[message_index++] = message_str.erase(message_str.find_last_not_of(" \n\r\t")+1);
+    printf("Got message: %s", mesg);
+
+    std::string mesg_str = std::string(mesg);
+
+    if (mesg_str.compare(0, 7, "Submit ") == 0)
+    {
+        messages[message_index++] = get_message(mesg, 7);
+    }
+    else if (mesg_str.compare(0, 7, "GetNext") == 0)
+    {
+    }
+    else if (mesg_str.compare(0, 6, "GetAll") == 0)
+    {
+    }
+    else if (mesg_str.compare(0, 5, "Leave") == 0)
+    {
+    }
+    else
+    {
+        // reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n";
+        // reply(upd_sock, cliaddr, reply_str);
+    }
+
+
+
+    // std::string message_str = std::string(buf);
+    // messages[message_index++] = message_str.erase(message_str.find_last_not_of(" \n\r\t")+1);
     return cc;
 }
 
