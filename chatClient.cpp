@@ -43,7 +43,7 @@ int main(int argc, char**argv)
             while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
             {
                 send(session_sock, sendline, strlen(sendline), 0);
-                printf("Sent: %s\n", sendline);
+                printf("Sent: %s", sendline);
                 memset(&sendline, 0, sizeof(sendline));
             }
 

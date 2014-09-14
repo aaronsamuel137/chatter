@@ -13,7 +13,7 @@ std::map<std::string, int> PORTS;
 int updSocket(const char *portnum);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
 int serveSession(int msock);
-int echo(int fd);
+int echo(int fd, std::map<int, std::string> &messages, int &message_index);
 
 int main(int argc, char**argv)
 {
@@ -174,19 +174,7 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         port_str.copy(portnum_reply, port_str.size(), 0);
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
-        // socklen_t len = sizeof(tcp_cliaddr);
-        // accept(s, tcp_cliaddr, &len);
-        // printf("ACCEPTED\n");
-
         serveSession(s);
-
-        // while (1)
-        // {
-        //     echo(s);
-        //     // n = recv(s, mesg, MESSAGE_LENGTH, 0);
-        //     // printf("Got message:\n%s\n\n", mesg);
-        //     // memset(&mesg, 0, sizeof(mesg));
-        // }
 
         return 1;
     }
@@ -204,8 +192,11 @@ int serveSession(int msock)
     fd_set afds;                /* active file descriptor set   */
     unsigned int alen;          /* from-address length      */
     int fd, nfds;
+    int message_index = 0;
 
     printf("Starting session with socket %d\n", msock);
+
+    std::map<int, std::string> messages;
 
     nfds = getdtablesize();
     FD_ZERO(&afds);
@@ -234,7 +225,7 @@ int serveSession(int msock)
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
                 printf("Calling echo with socket %d\n", fd);
-                if (echo(fd) == 0) {
+                if (echo(fd, messages, message_index) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
@@ -247,20 +238,20 @@ int serveSession(int msock)
  * echo - echo one buffer of data, returning byte count
  *------------------------------------------------------------------------
  */
-int echo(int fd)
+int echo(int fd, std::map<int, std::string> &messages, int &message_index)
 {
     char buf[MESSAGE_LENGTH];
     int cc;
 
-    printf("ECHO\n");
     cc = recv(fd, buf, sizeof(buf), 0);
 
-    // cc = read(fd, buf, sizeof buf);
     if (cc < 0)
         errexit("echo read: %s\n", strerror(errno));
     if (cc && write(fd, buf, cc) < 0)
         errexit("echo write: %s\n", strerror(errno));
-    printf("Got message:\n%s\n\n", buf);
+
+    printf("Got message: %s", buf);
+    messages[message_index++] = std::string(buf);
     return cc;
 }
 
