@@ -19,9 +19,7 @@ int main(int argc, char**argv)
     int upd_sock, session_sock, session_portnum, n;
     struct sockaddr_in cliaddr;
     socklen_t len;
-
     char mesg[MESSAGE_LENGTH];
-    // char reply[MESSAGE_LENGTH];
 
     char *udp_portnum = "32000";
     std::map<std::string, int> ports;
@@ -255,6 +253,11 @@ int serveSession(int msock)
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
+                // printf("Printing messages:\n");
+                // for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
+                // {
+                //     printf("%d -> %s\n", it->first, it->second.c_str());
+                // }
             }
         }
     }
@@ -273,7 +276,8 @@ int echo(int fd, std::map<int, std::string> &messages, int &message_index)
         errexit("echo write: %s\n", strerror(errno));
 
     printf("Got message: %s", buf);
-    messages[message_index++] = std::string(buf);
+    std::string message_str = std::string(buf);
+    messages[message_index++] = message_str.erase(message_str.find_last_not_of(" \n\r\t")+1);
     return cc;
 }
 
