@@ -12,7 +12,7 @@ void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(const char *portnum);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
 int serveSession(int msock);
-int handle_message(int fd, std::map<int, std::string> &messages, int &message_index);
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 
 int main(int argc, char**argv)
 {
@@ -218,6 +218,7 @@ int serveSession(int msock)
     printf("Starting session with socket %d\n", msock);
 
     std::map<int, std::string> messages;
+    std::map<int, int> last_read;
 
     nfds = getdtablesize();
     FD_ZERO(&afds);
@@ -235,6 +236,7 @@ int serveSession(int msock)
             ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
             if (ssock < 0)
                 errexit("accept: %s\n", strerror(errno));
+            last_read[ssock] = 0;
             printf("Accepted socket %d\n", ssock);
             FD_SET(ssock, &afds);
         }
@@ -246,43 +248,46 @@ int serveSession(int msock)
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
                 printf("Calling handle_message with socket %d\n", fd);
-                if (handle_message(fd, messages, message_index) == 0) {
+                if (handle_message(fd, last_read, messages, message_index) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
-                printf("Printing messages:\n");
-                for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
-                {
-                    printf("%d -> %s\n", it->first, it->second.c_str());
-                }
+                // printf("Printing messages:\n");
+                // for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
+                // {
+                //     printf("%d -> %s\n", it->first, it->second.c_str());
+                // }
             }
         }
     }
 }
 
-int handle_message(int fd, std::map<int, std::string> &messages, int &message_index)
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index)
 {
-    char mesg[MESSAGE_LENGTH];
-    int cc;
-    // std::string message;
+    char sendline[MESSAGE_LENGTH];
+    char recvline[MESSAGE_LENGTH];
+    memset(&sendline, 0, sizeof(sendline));
+    memset(&recvline, 0, sizeof(recvline));
 
-    cc = recv(fd, mesg, sizeof(mesg), 0);
+    std::string message;
 
-    if (cc < 0)
-        errexit("handle_message read: %s\n", strerror(errno));
-    if (cc && write(fd, mesg, cc) < 0)
-        errexit("handle_message write: %s\n", strerror(errno));
+    if (recv(fd, recvline, sizeof(recvline), 0) < 0)
+        printf("Error receiving message %s\n", strerror(errno));
 
-    printf("Got message: %s", mesg);
+    printf("Got message: %s\n", recvline);
 
-    std::string mesg_str = std::string(mesg);
+    std::string mesg_str = std::string(recvline);
 
     if (mesg_str.compare(0, 7, "Submit ") == 0)
     {
-        messages[message_index++] = get_message(mesg, 7);
+        messages[message_index++] = get_message(recvline, 7);
     }
     else if (mesg_str.compare(0, 7, "GetNext") == 0)
     {
+        int message_index = last_read[fd]++;
+        message = messages[message_index];
+        strncpy(sendline, message.c_str(), sizeof(sendline));
+        send(fd, sendline, strlen(sendline), 0);
     }
     else if (mesg_str.compare(0, 6, "GetAll") == 0)
     {
@@ -296,10 +301,9 @@ int handle_message(int fd, std::map<int, std::string> &messages, int &message_in
         // reply(upd_sock, cliaddr, reply_str);
     }
 
-
+    return 1;
 
     // std::string message_str = std::string(buf);
     // messages[message_index++] = message_str.erase(message_str.find_last_not_of(" \n\r\t")+1);
-    return cc;
 }
 

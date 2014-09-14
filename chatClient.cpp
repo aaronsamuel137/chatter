@@ -58,19 +58,27 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 7, "Submit ") == 0)
         {
-            send(session_sock, sendline, strlen(sendline), 0);
-            printf("Sent: %s", sendline);
+            // send(session_sock, sendline, strlen(sendline), 0);
+            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                printf("Error sending message %s\n", strerror(errno));
+            // printf("Sent: %s", sendline);
             // printf("%s > ", s_name.c_str());
         }
-        else if (send_str.compare(0, 8, "GetNext ") == 0)
+        else if (send_str.compare(0, 7, "GetNext") == 0)
+        {
+            send_str = "GetNext";
+            strncpy(sendline, send_str.c_str(), sizeof(sendline));
+            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                printf("Error sending message %s\n", strerror(errno));
+            if (recv(session_sock, recvline, sizeof(recvline), 0) < 0)
+                printf("Error receiving message %s\n", strerror(errno));
+            printf("%s\n", recvline);
+        }
+        else if (send_str.compare(0, 6, "GetAll") == 0)
         {
             /* code */
         }
-        else if (send_str.compare(0, 7, "GetAll ") == 0)
-        {
-            /* code */
-        }
-        else if (send_str.compare(0, 6, "Leave ") == 0)
+        else if (send_str.compare(0, 5, "Leave") == 0)
         {
             /* code */
         }
