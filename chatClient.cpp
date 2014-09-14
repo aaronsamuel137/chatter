@@ -28,7 +28,6 @@ int main(int argc, char**argv)
             n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
             recvline[n] = 0;
             printf("Starting chatroom on port %s\n", recvline);
-            // memset(&recvline, 0, sizeof(recvline));
 
             sessionaddr.sin_family = AF_INET;
             sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
@@ -38,6 +37,16 @@ int main(int argc, char**argv)
 
             if (connect(session_sock, (struct sockaddr *)&sessionaddr, sizeof(sessionaddr)) < 0)
                 errexit("can't connect to %s: %s\n", atoi(recvline), strerror(errno));
+
+            memset(&sendline, 0, sizeof(sendline));
+            memset(&recvline, 0, sizeof(recvline));
+            while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
+            {
+                send(session_sock, sendline, strlen(sendline), 0);
+                printf("Sent: %s\n", sendline);
+                memset(&sendline, 0, sizeof(sendline));
+            }
+
             // n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
             // recvline[n] = 0;
         }

@@ -1,6 +1,8 @@
 #include "chatutilfunctions.h"
 #include <unistd.h>
 #include <map>
+#include <sys/select.h>
+#include <sys/time.h>
 
 #define QLEN 32 // maximum connection queue length
 
@@ -10,6 +12,8 @@ std::map<std::string, int> PORTS;
 
 int updSocket(const char *portnum);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
+int serveSession(int msock);
+int echo(int fd);
 
 int main(int argc, char**argv)
 {
@@ -25,6 +29,8 @@ int main(int argc, char**argv)
     std::string mesg_str, reply_str, s_name;
 
     upd_sock = updSocket(udp_portnum);
+    printf("Starting UDP socket with number %d\n", upd_sock);
+
     for (;;)
     {
         // clear the reply and message buffers
@@ -130,6 +136,7 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
     struct sockaddr* tcp_cliaddr;
     int    s;
     char portnum_reply[8];
+    char mesg[MESSAGE_LENGTH];
 
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
@@ -167,12 +174,19 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         port_str.copy(portnum_reply, port_str.size(), 0);
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
-        while (1)
-        {
-            socklen_t len = sizeof(tcp_cliaddr);
-            accept(s, tcp_cliaddr, &len);
-            printf("ACCEPTED\n");
-        }
+        // socklen_t len = sizeof(tcp_cliaddr);
+        // accept(s, tcp_cliaddr, &len);
+        // printf("ACCEPTED\n");
+
+        serveSession(s);
+
+        // while (1)
+        // {
+        //     echo(s);
+        //     // n = recv(s, mesg, MESSAGE_LENGTH, 0);
+        //     // printf("Got message:\n%s\n\n", mesg);
+        //     // memset(&mesg, 0, sizeof(mesg));
+        // }
 
         return 1;
     }
@@ -182,3 +196,71 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         return 0;
     }
 }
+
+int serveSession(int msock)
+{
+    struct sockaddr_in fsin;    /* the from address of a client */
+    fd_set rfds;                /* read file descriptor set */
+    fd_set afds;                /* active file descriptor set   */
+    unsigned int alen;          /* from-address length      */
+    int fd, nfds;
+
+    printf("Starting session with socket %d\n", msock);
+
+    nfds = getdtablesize();
+    FD_ZERO(&afds);
+    FD_SET(msock, &afds);
+
+    while (1) {
+        memcpy(&rfds, &afds, sizeof(rfds));
+
+        if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
+            errexit("select: %s\n", strerror(errno));
+        if (FD_ISSET(msock, &rfds)) {
+            int ssock;
+
+            alen = sizeof(fsin);
+            ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
+            if (ssock < 0)
+                errexit("accept: %s\n", strerror(errno));
+            printf("Accepted socket %d\n", ssock);
+            FD_SET(ssock, &afds);
+        }
+
+        // OSX workaround, can't have more than 1024 fds
+        for (fd = 0; fd < 1024; ++fd)
+        // for (fd = 0; fd < nfds; ++fd)
+        {
+            if (fd != msock && FD_ISSET(fd, &rfds))
+            {
+                printf("Calling echo with socket %d\n", fd);
+                if (echo(fd) == 0) {
+                    (void) close(fd);
+                    FD_CLR(fd, &afds);
+                }
+            }
+        }
+    }
+}
+
+/*------------------------------------------------------------------------
+ * echo - echo one buffer of data, returning byte count
+ *------------------------------------------------------------------------
+ */
+int echo(int fd)
+{
+    char buf[MESSAGE_LENGTH];
+    int cc;
+
+    printf("ECHO\n");
+    cc = recv(fd, buf, sizeof(buf), 0);
+
+    // cc = read(fd, buf, sizeof buf);
+    if (cc < 0)
+        errexit("echo read: %s\n", strerror(errno));
+    if (cc && write(fd, buf, cc) < 0)
+        errexit("echo write: %s\n", strerror(errno));
+    printf("Got message:\n%s\n\n", buf);
+    return cc;
+}
+

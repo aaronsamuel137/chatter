@@ -1,4 +1,4 @@
 #!/bin/bash
 
-g++ -o client chatClient.cpp
-g++ -o server chatServer.cpp
+g++ -D_DARWIN_UNLIMITED_SELECT=1 -o client chatClient.cpp
+g++ -D_DARWIN_UNLIMITED_SELECT=1 -o server chatServer.cpp
