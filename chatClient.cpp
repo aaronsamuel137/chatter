@@ -22,12 +22,18 @@ int main(int argc, char**argv)
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
-        if (strncmp("Start ", sendline, START_LEN) == 0)
+        if (strncmp("Start ", sendline, START_LEN) == 0 || strncmp("Find ", sendline, FIND_LEN) == 0)
         {
             sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
             n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+
+            if (atoi(recvline) == 0)
+            {
+                printf("Error: chatroom not found\n");
+                continue;
+            }
+
             recvline[n] = 0;
-            printf("Starting chatroom on port %s\n", recvline);
 
             sessionaddr.sin_family = AF_INET;
             sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
@@ -50,10 +56,10 @@ int main(int argc, char**argv)
             // n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
             // recvline[n] = 0;
         }
-        else if (strncmp("Find ", sendline, FIND_LEN) == 0)
-        {
+        // else if (strncmp("Find ", sendline, FIND_LEN) == 0)
+        // {
 
-        }
+        // }
         else if (strncmp("Terminate ", sendline, TERMINATE_LEN) == 0)
         {
 

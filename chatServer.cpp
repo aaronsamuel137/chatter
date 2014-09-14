@@ -8,8 +8,7 @@
 
 extern int errno;
 
-std::map<std::string, int> PORTS;
-
+void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(const char *portnum);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
 int serveSession(int msock);
@@ -22,11 +21,12 @@ int main(int argc, char**argv)
     socklen_t len;
 
     char mesg[MESSAGE_LENGTH];
-    char reply[MESSAGE_LENGTH];
+    // char reply[MESSAGE_LENGTH];
 
     char *udp_portnum = "32000";
+    std::map<std::string, int> ports;
 
-    std::string mesg_str, reply_str, s_name;
+    std::string mesg_str, s_name, reply_str;
 
     upd_sock = updSocket(udp_portnum);
     printf("Starting UDP socket with number %d\n", upd_sock);
@@ -34,7 +34,6 @@ int main(int argc, char**argv)
     for (;;)
     {
         // clear the reply and message buffers
-        memset(&reply, 0, sizeof(reply));
         memset(&mesg, 0, sizeof(mesg));
 
         len = sizeof(cliaddr);
@@ -42,47 +41,73 @@ int main(int argc, char**argv)
 
         mesg_str = std::string(mesg);
 
+        printf("Got communication: %s\n", mesg);
+
         if (strncmp("Start ", mesg, START_LEN) == 0)
         {
             s_name = mesg_str.substr(START_LEN, mesg_str.size());
-            reply_str = "Starting chat room " + s_name;
+            s_name.erase(s_name.find_last_not_of(" \n\r\t")+1);
+            // reply_str = "Starting chat room " + s_name;
 
-            // if a new session is created, send the port back to client
-            if (sessionSocket(upd_sock, cliaddr, s_name))
+            int portnum = sessionSocket(upd_sock, cliaddr, s_name);
+            if (portnum)
             {
-                exit(0);
-                // continue;
+                ports[s_name] = portnum;
+                if (ports.count(s_name) == 1)
+                    printf("Added \"%s\" -> %d to ports maps\n", s_name.c_str(), ports[s_name]);
             }
-
-            printf("Got Start command\n");
-            printf("chatroom name: %s\n", s_name.c_str());
+            else
+            {
+                // only the child process session server will reach this point
+                exit(0);
+            }
         }
         else if (strncmp("Find ", mesg, FIND_LEN) == 0)
         {
             s_name = mesg_str.substr(5, mesg_str.size());
-            reply_str = "Finding chat room " + s_name;
+            s_name.erase(s_name.find_last_not_of(" \n\r\t")+1);
 
-            printf("Got Find command\n");
-            printf("chatroom name: %s\n", s_name.c_str());
+            printf("Searching for chatroom %s\n", s_name.c_str());
+
+            for(std::map<std::string,int>::iterator it = ports.begin(); it != ports.end(); it++)
+            {
+                printf("%s -> %d\n", it->first.c_str(), it->second);
+            }
+
+            if (ports.count(s_name) == 0)
+            {
+                printf("Error: no chatroom exists with name \"%s\"", s_name.c_str());
+                reply(upd_sock, cliaddr, "0\0");
+            }
+            else
+            {
+                printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
+            }
         }
         else if (strncmp("Terminate ", mesg, TERMINATE_LEN) == 0)
         {
-            s_name = mesg_str.substr(TERMINATE_LEN, mesg_str.size());
-            reply_str = "Terminating chat room " + s_name;
+            // s_name = mesg_str.substr(TERMINATE_LEN, mesg_str.size());
+            // reply_str = "Terminating chat room " + s_name;
 
             printf("Got Terminate command\n");
-            printf("chatroom name: %s\n", s_name.c_str());
+            // printf("chatroom name: %s\n", s_name.c_str());
         }
         else
         {
-            reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n\0";
+            reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n";
+            reply(upd_sock, cliaddr, reply_str);
         }
-
-        // reply_str.copy(reply, reply_str.size(), 0);
-        // reply[MESSAGE_LENGTH-1] = '\0';
-        // n = strlen(reply);
-        // sendto(upd_sock, reply, n, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+        printf("Ending loop\n");
     }
+}
+
+void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
+{
+    char reply[MESSAGE_LENGTH];
+    memset(&reply, 0, sizeof(reply));
+    reply_str.copy(reply, reply_str.size(), 0);
+    reply[MESSAGE_LENGTH-1] = '\0';
+    sendto(upd_sock, reply, strlen(reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
 }
 
 int updSocket(const char *portnum)
@@ -159,9 +184,8 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
     }
 
-    int portnum = ntohs(sin.sin_port);
-
     pid_t pid = fork();
+    int portnum = ntohs(sin.sin_port);
 
     // child process
     if (pid == 0)
@@ -169,19 +193,19 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         if (listen(s, QLEN) < 0)
             errexit("can't listen on %s port: %s\n", portnum, strerror(errno));
 
-        PORTS[s_name] = portnum;
+        // send the TCP port number back to client
         std::string port_str = std::to_string(portnum);
         port_str.copy(portnum_reply, port_str.size(), 0);
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
         serveSession(s);
 
-        return 1;
+        return 0;
     }
     // parent process
     else
     {
-        return 0;
+        return portnum;
     }
 }
 
@@ -234,10 +258,6 @@ int serveSession(int msock)
     }
 }
 
-/*------------------------------------------------------------------------
- * echo - echo one buffer of data, returning byte count
- *------------------------------------------------------------------------
- */
 int echo(int fd, std::map<int, std::string> &messages, int &message_index)
 {
     char buf[MESSAGE_LENGTH];
