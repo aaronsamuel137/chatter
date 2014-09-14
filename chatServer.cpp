@@ -1,12 +1,15 @@
 #include "chatutilfunctions.h"
 #include <unistd.h>
+#include <map>
 
 #define QLEN 32 // maximum connection queue length
 
 extern int errno;
 
+std::map<std::string, int> PORTS;
+
 int updSocket(const char *portnum);
-int sessionSocket();
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
 
 int main(int argc, char**argv)
 {
@@ -16,12 +19,10 @@ int main(int argc, char**argv)
 
     char mesg[MESSAGE_LENGTH];
     char reply[MESSAGE_LENGTH];
-    char portnum_reply[8];
 
     char *udp_portnum = "32000";
 
     std::string mesg_str, reply_str, s_name;
-
 
     upd_sock = updSocket(udp_portnum);
     for (;;)
@@ -41,12 +42,10 @@ int main(int argc, char**argv)
             reply_str = "Starting chat room " + s_name;
 
             // if a new session is created, send the port back to client
-            if (session_portnum = sessionSocket())
+            if (sessionSocket(upd_sock, cliaddr, s_name))
             {
-                std::string port_str = std::to_string(session_portnum);
-                port_str.copy(portnum_reply, port_str.size(), 0);
-                sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
-                continue;
+                exit(0);
+                // continue;
             }
 
             printf("Got Start command\n");
@@ -125,10 +124,12 @@ int updSocket(const char *portnum)
  * sessionSocket - allocate & bind a server socket using TCP
  *------------------------------------------------------------------------
  */
-int sessionSocket()
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
 {
-    struct sockaddr_in sin; /* an Internet endpoint address  */
-    int    s;               /* socket descriptor             */
+    struct sockaddr_in sin;
+    struct sockaddr* tcp_cliaddr;
+    int    s;
+    char portnum_reply[8];
 
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
@@ -151,14 +152,29 @@ int sessionSocket()
         printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
     }
 
+    int portnum = ntohs(sin.sin_port);
+
     pid_t pid = fork();
 
     // child process
     if (pid == 0)
     {
         if (listen(s, QLEN) < 0)
-            errexit("can't listen on %s port: %s\n", ntohs(sin.sin_port), strerror(errno));
-        return ntohs(sin.sin_port);
+            errexit("can't listen on %s port: %s\n", portnum, strerror(errno));
+
+        PORTS[s_name] = portnum;
+        std::string port_str = std::to_string(portnum);
+        port_str.copy(portnum_reply, port_str.size(), 0);
+        sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
+
+        while (1)
+        {
+            socklen_t len = sizeof(tcp_cliaddr);
+            accept(s, tcp_cliaddr, &len);
+            printf("ACCEPTED\n");
+        }
+
+        return 1;
     }
     // parent process
     else
