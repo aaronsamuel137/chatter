@@ -1,11 +1,15 @@
 #include "chatutilfunctions.h"
 
+int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
+int connect_to_socket(sockaddr_in servaddr, int portnum);
+
 int main(int argc, char**argv)
 {
-    int sockfd, session_sock, n;
-    struct sockaddr_in servaddr, sessionaddr;
+    int sockfd, session_sock, n, portnum;
+    struct sockaddr_in servaddr;
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
+    std::string send_str, s_name, message;
 
     if (argc != 2)
     {
@@ -22,61 +26,102 @@ int main(int argc, char**argv)
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
-        if (strncmp("Start ", sendline, START_LEN) == 0 || strncmp("Find ", sendline, FIND_LEN) == 0)
+        send_str = std::string(sendline);
+        // s_name = NULL;
+        // message = NULL;
+
+        if (send_str.compare(0, 6, "Start ") == 0)
         {
-            sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
-            n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-            recvline[n] = 0;
-
-            if (atoi(recvline) == 0)
+            s_name = get_message(send_str, 6);
+            portnum = send_upd(sockfd, servaddr, sendline, recvline);
+            if (portnum == -1)
+                printf("Error starting chatroom");
+            else
             {
-                printf("Error: chatroom not found\n");
-                continue;
+                connect_to_socket(servaddr, portnum);
+                printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
-
-            sessionaddr.sin_family = AF_INET;
-            sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
-            sessionaddr.sin_port = htons(atoi(recvline));
-
-            session_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-            if (connect(session_sock, (struct sockaddr *)&sessionaddr, sizeof(sessionaddr)) < 0)
-                errexit("can't connect to %s: %s\n", atoi(recvline), strerror(errno));
-
-            memset(&recvline, 0, sizeof(recvline));
-            n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-            recvline[n] = 0;
-            printf("%s", recvline);
-
-            memset(&sendline, 0, sizeof(sendline));
-            memset(&recvline, 0, sizeof(recvline));
-
-            printf("ME > ");
-            while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
-            {
-                send(session_sock, sendline, strlen(sendline), 0);
-                printf("Sent: %s", sendline);
-                memset(&sendline, 0, sizeof(sendline));
-                printf("ME > ");
-            }
-
-            // n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-            // recvline[n] = 0;
         }
-        // else if (strncmp("Find ", sendline, FIND_LEN) == 0)
-        // {
-
-        // }
-        else if (strncmp("Terminate ", sendline, TERMINATE_LEN) == 0)
+        else if (send_str.compare(0, 5, "Join ") == 0)
+        {
+            s_name = get_message(send_str, 5);
+            portnum = send_upd(sockfd, servaddr, sendline, recvline);
+            if (portnum == -1)
+                printf("Error joining chatroom");
+            else
+            {
+                connect_to_socket(servaddr, portnum);
+                printf("You have joined the chat session %s\n", s_name.c_str());
+            }
+        }
+        else if (send_str.compare(0, 7, "Submit ") == 0)
         {
 
+            // memset(&recvline, 0, sizeof(recvline));
+            // n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+            // recvline[n] = 0;
+            // printf("%s", recvline);
+        }
+        else if (send_str.compare(0, 8, "GetNext ") == 0)
+        {
+            /* code */
+        }
+        else if (send_str.compare(0, 7, "GetAll ") == 0)
+        {
+            /* code */
+        }
+        else if (send_str.compare(0, 6, "Leave ") == 0)
+        {
+            /* code */
+        }
+        else if (send_str.compare(0, 4, "Exit ") == 0)
+        {
+            printf("Bye!\n");
+            exit(0);
         }
         else
         {
-            sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+            printf("Invalid command: %s", sendline);
         }
-        n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-        recvline[n] = 0;
-        fputs(recvline, stdout);
+        // else
+        // {
+        //     sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+        // }
+        // n = recvfrom(sockfd, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+        // recvline[n] = 0;
+        // fputs(recvline, stdout);
     }
+}
+
+int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[])
+{
+    sendto(upd_sock, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+    int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+    recvline[n] = 0;
+    return atoi(recvline);
+}
+
+int connect_to_socket(sockaddr_in servaddr, int portnum)
+{
+    // struct sockaddr_in sessionaddr;
+    // sessionaddr.sin_family = AF_INET;
+    // sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
+    servaddr.sin_port = htons(portnum);
+    int session_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (connect(session_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+        errexit("can't connect to %s: %s\n", portnum, strerror(errno));
+
+    while (1)
+    {
+
+    }
+
+    // memset(&recvline, 0, sizeof(recvline));
+    // n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+    // recvline[n] = 0;
+    // printf("%s", recvline);
+
+    // memset(&sendline, 0, sizeof(sendline));
+    // memset(&recvline, 0, sizeof(recvline));
 }

@@ -33,4 +33,10 @@ int errexit(const char *format, ...)
     exit(1);
 }
 
+std::string get_message(std::string input, int start_index)
+{
+    std::string message = input.substr(6, input.size());
+    return message.erase(message.find_last_not_of(" \n\r\t") + 1);
+}
+
 #endif
