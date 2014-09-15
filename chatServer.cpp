@@ -265,11 +265,12 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 {
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
+    char digit_buffer[4];
     memset(&sendline, 0, sizeof(sendline));
     memset(&recvline, 0, sizeof(recvline));
 
     std::string message;
-    int index;
+    int index, message_size, i;
 
     if (recv(fd, recvline, sizeof(recvline), 0) < 0)
         printf("Error receiving message %s\n", strerror(errno));
@@ -280,7 +281,16 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
     if (mesg_str.compare(0, 7, "Submit ") == 0)
     {
-        messages[message_index++] = get_message(recvline, 7);
+        memset(&digit_buffer, 0, sizeof(digit_buffer));
+        for (i = 7; i < strlen(recvline); i++)
+        {
+            if (isdigit(recvline[i]))
+                digit_buffer[i - 7] = recvline[i];
+            else
+                break;
+        }
+        messages[message_index++] = get_message(recvline, i + 1);
+        printf("Got message: %s with size: %d\n", messages[message_index-1].c_str(), atoi(digit_buffer));
     }
     else if (mesg_str.compare(0, 7, "GetNext") == 0)
     {
