@@ -1,5 +1,4 @@
 #include "chatutilfunctions.h"
-#include <unistd.h>
 #include <map>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -270,6 +269,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     memset(&recvline, 0, sizeof(recvline));
 
     std::string message;
+    int index;
 
     if (recv(fd, recvline, sizeof(recvline), 0) < 0)
         printf("Error receiving message %s\n", strerror(errno));
@@ -284,13 +284,32 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     }
     else if (mesg_str.compare(0, 7, "GetNext") == 0)
     {
-        int message_index = last_read[fd]++;
-        message = messages[message_index];
+        index = last_read[fd]++;
+        message = messages[index];
         strncpy(sendline, message.c_str(), sizeof(sendline));
         send(fd, sendline, strlen(sendline), 0);
     }
     else if (mesg_str.compare(0, 6, "GetAll") == 0)
     {
+        index = last_read[fd];
+        while (messages.count(index) == 1)
+        {
+            message = messages[index];
+            strncpy(sendline, message.c_str(), sizeof(sendline));
+            send(fd, sendline, strlen(sendline), 0);
+            index++;
+            memset(&sendline, 0, sizeof(sendline));
+        }
+        last_read[fd] = index;
+
+        message = "\0";
+        strncpy(sendline, message.c_str(), sizeof(sendline));
+        int n = send(fd, sendline, strlen(sendline) + 1, 0);
+        printf("%d\n", n);
+        if (n < 0)
+            printf("Error sending message %s\n", strerror(errno));
+
+        printf("DONE\n");
     }
     else if (mesg_str.compare(0, 5, "Leave") == 0)
     {

@@ -5,10 +5,11 @@ int connect_to_socket(sockaddr_in servaddr, int portnum);
 
 int main(int argc, char**argv)
 {
-    int sockfd, session_sock, n, portnum;
+    int sockfd, session_sock, n, portnum, i;
     struct sockaddr_in servaddr;
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
+    char digit_buffer[4];           // for holding message length
     std::string send_str, s_name, message;
 
     if (argc != 2)
@@ -58,11 +59,25 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 7, "Submit ") == 0)
         {
-            // send(session_sock, sendline, strlen(sendline), 0);
-            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
-                printf("Error sending message %s\n", strerror(errno));
-            // printf("Sent: %s", sendline);
-            // printf("%s > ", s_name.c_str());
+            // make sure that a message length is included
+            memset(&digit_buffer, 0, sizeof(digit_buffer));
+            for (i = 7; i < strlen(sendline); i++)
+            {
+                if (isdigit(sendline[i]))
+                    digit_buffer[i - 7] = sendline[i];
+                else
+                    break;
+            }
+            if (atoi(digit_buffer) == 0)
+                printf("Error: must enter number of bytes sent.\nCorrect usage: Submit <message length> <message>\n");
+            else
+            {
+                message = get_message(send_str, i + 1);
+                printf("message: %s\n", message.c_str());
+
+                if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                    printf("Error sending message %s\n", strerror(errno));
+            }
         }
         else if (send_str.compare(0, 7, "GetNext") == 0)
         {
@@ -76,7 +91,19 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 6, "GetAll") == 0)
         {
-            /* code */
+            send_str = "GetAll";
+            strncpy(sendline, send_str.c_str(), sizeof(sendline));
+            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                printf("Error sending message %s\n", strerror(errno));
+
+            while (1)
+            {
+                int n = recv(session_sock, recvline, sizeof(recvline), 0);
+                printf("Got %d bytes\n", n);
+                printf("%s\n", recvline);
+                memset(&recvline, 0, sizeof(recvline));
+            }
+            printf("All messages got\n");
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
         {
