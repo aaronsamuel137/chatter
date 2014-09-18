@@ -109,7 +109,7 @@ int main(int argc, char**argv)
         {
             /* code */
         }
-        else if (send_str.compare(0, 4, "Exit ") == 0)
+        else if (send_str.compare(0, 4, "Exit") == 0)
         {
             printf("Bye!\n");
             exit(0);

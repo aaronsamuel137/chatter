@@ -2,6 +2,8 @@
 #include <map>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <iostream>
+#include <sstream>
 
 #define QLEN 32 // maximum connection queue length
 
@@ -294,8 +296,15 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     }
     else if (mesg_str.compare(0, 7, "GetNext") == 0)
     {
-        index = last_read[fd]++;
-        message = messages[index];
+        index = last_read[fd];
+        if (messages.count(index) == 1) {
+            std::stringstream ss;
+            ss << messages[index].size();
+            message = ss.str() + " " + messages[index];
+            last_read[fd]++;
+        }
+        else
+            message = "-1";
         strncpy(sendline, message.c_str(), sizeof(sendline));
         send(fd, sendline, strlen(sendline), 0);
     }
