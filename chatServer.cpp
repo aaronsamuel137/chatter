@@ -2,7 +2,6 @@
 #include <map>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <iostream>
 #include <sstream>
 
 #define QLEN 32 // maximum connection queue length
@@ -310,23 +309,25 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     }
     else if (mesg_str.compare(0, 6, "GetAll") == 0)
     {
+        std::stringstream ss;
+        ss << (message_index - last_read[fd]);
+        message = ss.str();
+        ss.str(std::string());
+        strncpy(sendline, message.c_str(), sizeof(sendline));
+        send(fd, sendline, strlen(sendline), 0);
+        memset(&sendline, 0, sizeof(sendline));
+
         index = last_read[fd];
-        while (messages.count(index) == 1)
+        for (i = last_read[fd]; i < message_index; i++)
         {
-            message = messages[index];
+            ss << messages[i].size();
+            message = ss.str() + " " + messages[i];
+            ss.str(std::string());
             strncpy(sendline, message.c_str(), sizeof(sendline));
             send(fd, sendline, strlen(sendline), 0);
-            index++;
             memset(&sendline, 0, sizeof(sendline));
         }
-        last_read[fd] = index;
-
-        message = "\0";
-        strncpy(sendline, message.c_str(), sizeof(sendline));
-        int n = send(fd, sendline, strlen(sendline) + 1, 0);
-        printf("%d\n", n);
-        if (n < 0)
-            printf("Error sending message %s\n", strerror(errno));
+        last_read[fd] = i;
 
         printf("DONE\n");
     }
