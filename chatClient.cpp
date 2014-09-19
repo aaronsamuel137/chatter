@@ -172,11 +172,4 @@ int connect_to_socket(sockaddr_in servaddr, int portnum)
         errexit("can't connect to %s\n", portnum, strerror(errno));
 
     return session_sock;
-    // memset(&recvline, 0, sizeof(recvline));
-    // n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
-    // recvline[n] = 0;
-    // printf("%s", recvline);
-
-    // memset(&sendline, 0, sizeof(sendline));
-    // memset(&recvline, 0, sizeof(recvline));
 }

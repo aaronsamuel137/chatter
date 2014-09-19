@@ -266,73 +266,55 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 {
     char sendline[MESSAGE_LENGTH] = {0};
     char recvline[MESSAGE_LENGTH] = {0};
-    // char digit_buffer[4];
-    // clear_array(sendline);
-    // clear_array(recvline);
 
     std::string message;
     int index, message_size, i, n, mesg_len;
 
     n = recv(fd, recvline, sizeof(recvline), 0);
-    printf("recvline: %s\nsize: %d", recvline, n);
+    // printf("recvline: %s\nsize: %d\n", recvline, n);
+
+    if (n < 0)
+    {
+        printf("Error receiving message %s\n", strerror(errno));
+        return -1;
+    }
 
     Reader reader(recvline, n);
 
-    if (n < 0)
-        printf("Error receiving message %s\n", strerror(errno));
-
-    // printf("Got message: %s, of size %d\n", recvline, n);
-
-    // std::string mesg_str = std::string(recvline);
-    message = reader.next_word();
-    printf("word: %s\n", message.c_str());
-
-    if (message.compare(0, 6, "Submit") == 0)
+    while (reader.get_index() < n)
     {
-        mesg_len = reader.next_int();
-        message = reader.next_line();
-        messages[message_index++] = message;
-        printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
-    }
-    else if (message.compare(0, 7, "GetNext") == 0)
-    {
-        index = last_read[fd];
-        if (messages.count(index) == 1) {
-            std::stringstream ss;
-            ss << messages[index].size();
-            message = ss.str() + " " + messages[index];
-            last_read[fd]++;
-        }
-        else
-            message = "-1";
-        strncpy(sendline, message.c_str(), sizeof(sendline));
-        send(fd, sendline, strlen(sendline), 0);
-    }
-    else if (message.compare(0, 6, "GetAll") == 0)
-    {
-        std::stringstream ss;
-        int send_index = 0;
-        ss << (message_index - last_read[fd]);
-        message = ss.str();
-        ss.str(std::string());
 
-        // for (std::string::iterator it = message.begin(); it < message.end(); it++)
-        // {
-        //     sendline[send_index++] = *it;
-        // }
-        // sendline[send_index++] = ' ';
+        message = reader.next_word();
+        printf("word: %s\n", message.c_str());
+        printf("\n");
 
-        clear_array(sendline);
-        strncpy(sendline, message.c_str(), sizeof(sendline));
-        sendline[message.size()] = '\0';
-        send(fd, sendline, strlen(sendline), 0);
-        printf("send line %s\n", sendline);
-
-        for (i = last_read[fd]; i < message_index; i++)
+        if (message.compare(0, 6, "Submit") == 0)
         {
-            ss << messages[i].size();
-            printf("message i is %s\n", messages[i].c_str());
-            message = ss.str() + " " + messages[i];
+            mesg_len = reader.next_int();
+            message = reader.next_line();
+            messages[message_index++] = message;
+            printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
+        }
+        else if (message.compare(0, 7, "GetNext") == 0)
+        {
+            index = last_read[fd];
+            if (messages.count(index) == 1) {
+                std::stringstream ss;
+                ss << messages[index].size();
+                message = ss.str() + " " + messages[index];
+                last_read[fd]++;
+            }
+            else
+                message = "-1";
+            strncpy(sendline, message.c_str(), sizeof(sendline));
+            send(fd, sendline, strlen(sendline), 0);
+        }
+        else if (message.compare(0, 6, "GetAll") == 0)
+        {
+            std::stringstream ss;
+            int send_index = 0;
+            ss << (message_index - last_read[fd]);
+            message = ss.str();
             ss.str(std::string());
 
             clear_array(sendline);
@@ -341,27 +323,29 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             send(fd, sendline, strlen(sendline), 0);
             printf("send line %s\n", sendline);
 
-            // for (std::string::iterator it = message.begin(); it < message.end(); it++)
-            // {
-            //     sendline[send_index++] = *it;
-            // }
-            // sendline[send_index++] = '\n';
+            for (i = last_read[fd]; i < message_index; i++)
+            {
+                ss << messages[i].size();
+                printf("message i is %s\n", messages[i].c_str());
+                message = ss.str() + " " + messages[i];
+                ss.str(std::string());
+
+                clear_array(sendline);
+                strncpy(sendline, message.c_str(), sizeof(sendline));
+                sendline[message.size()] = '\0';
+                send(fd, sendline, strlen(sendline), 0);
+                printf("send line %s\n", sendline);
+            }
+            last_read[fd] = i;
+
+            printf("Finished GetAll\n");
         }
-        last_read[fd] = i;
-        // printf("SENDING: %s\n", sendline);
-        // send(fd, sendline, strlen(sendline), 0);
+        else if (message.compare(0, 5, "Leave") == 0)
+        {
+        }
 
-        printf("DONE\n");
+        printf("reader index: %d\n", reader.get_index());
     }
-    else if (message.compare(0, 5, "Leave") == 0)
-    {
-    }
-    // else
-    // {
-    //     printf("INVALID MESSAGE\n");
-    //     exit(0);
-    // }
-
     return 1;
 
     // std::string message_str = std::string(buf);

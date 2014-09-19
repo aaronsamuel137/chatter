@@ -52,6 +52,7 @@ public:
     void next_line(char*);
     std::string next_line();
     std::string next_word();
+    int get_index() {return index;};
 
 private:
     char get_char();
@@ -68,10 +69,8 @@ char Reader::get_char()
 {
 
     char c = buffer[index++];
-    if (c == '\0') {
-        printf("Error: read past end of reader\n");
+    if (index > size)
         return '\0';
-    }
     return c;
 }
 
@@ -107,9 +106,7 @@ std::string Reader::next_line()
     while (1)
     {
         c = get_char();
-        if (c == '\0')
-            return "";
-        if (c == '\n')
+        if (c == '\n' || c == '\0')
         {
             line_buffer[line_index] = '\0';
             return std::string(line_buffer);
@@ -128,9 +125,7 @@ std::string Reader::next_word()
     while (1)
     {
         c = get_char();
-        if (c == '\0')
-            return "";
-        if (c == ' ')
+        if (c == ' ' || c == '\0')
         {
             word_buffer[word_index] = '\0';
             return std::string(word_buffer);
@@ -149,7 +144,7 @@ void Reader::next_line(char *line_buffer)
     while (1)
     {
         c = get_char();
-        if (c == '\n')
+        if (c == '\n' || c == '\0')
             return;
         else
             line_buffer[line_index++] = c;
