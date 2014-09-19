@@ -28,6 +28,7 @@ int main(int argc, char**argv)
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
         clear_array(recvline);
+        clear_array(sendline);
         clear_array(digit_buffer);
 
         send_str = std::string(sendline);
@@ -130,7 +131,14 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
         {
-            /* code */
+            send_str = "Leave";
+            strncpy(sendline, send_str.c_str(), sizeof(sendline));
+            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                printf("Error sending Leave message %s\n", strerror(errno));
+            else {
+                close(session_sock);
+                printf("You have left the chat session %s\n", s_name.c_str());
+            }
         }
         else if (send_str.compare(0, 4, "Exit") == 0)
         {
@@ -141,7 +149,6 @@ int main(int argc, char**argv)
         {
             printf("Invalid command: %s", sendline);
         }
-        memset(&sendline, 0, sizeof(sendline));
     }
 }
 

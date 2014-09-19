@@ -344,6 +344,8 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
         }
         else if (message.compare(0, 5, "Leave") == 0)
         {
+            printf("closing connection with socket %d\n", fd);
+            return 0;
         }
 
         printf("reader index: %d\n", reader.get_index());
