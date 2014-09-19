@@ -98,40 +98,34 @@ int main(int argc, char**argv)
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                 printf("Error sending message %s\n", strerror(errno));
 
-            // n = recv(session_sock, recvline, sizeof(recvline), 0);
-            // num_messages = atoi(recvline);
-
-            // printf("Got %d messages\n", num_messages);
-
+            clear_array(recvline);
             n = recv(session_sock, recvline, sizeof(recvline), 0);
-            int digit_index = 0;
+            Reader reader(recvline, n);
 
-            printf("Got %d bytes\n", n);
+            int num_messages = reader.next_int();
+            int messages_received = 0;
 
-            for (i = 0; i < n; i++)
+            printf("getting %d messages\n", num_messages);
+
+            if (reader.get_index() >= n)
             {
-                if (recvline[i] == ' ')
+                clear_array(recvline);
+                n = recv(session_sock, recvline, sizeof(recvline), 0);
+                reader = Reader(recvline, n);
+            }
+            while (reader.get_index() < n)
+            {
+                int mesg_len = reader.next_int();
+                std::string message = reader.next_line();
+                printf("%s\n", message.c_str());
+                messages_received++;
+                if (messages_received < num_messages)
                 {
-                    if (atoi(digit_buffer)) {
-                        printf("got number %d\n", atoi(digit_buffer));
-                        clear_array(digit_buffer);
-                        digit_index = 0;
-                    }
-                    // printf("\n");
-                }
-                else if (isdigit(recvline[i]))
-                {
-                    digit_buffer[digit_index++] = recvline[i];
-                }
-                else
-                {
-                    printf("%c", recvline[i]);
+                    clear_array(recvline);
+                    n = recv(session_sock, recvline, sizeof(recvline), 0);
+                    reader = Reader(recvline, n);
                 }
             }
-            printf("\n");
-            // printf("%s\n", recvline);
-            // memset(&recvline, 0, sizeof(recvline));
-
             printf("All messages got\n");
         }
         else if (send_str.compare(0, 5, "Leave") == 0)

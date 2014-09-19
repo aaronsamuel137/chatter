@@ -319,7 +319,8 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
             clear_array(sendline);
             strncpy(sendline, message.c_str(), sizeof(sendline));
-            sendline[message.size()] = '\0';
+            sendline[message.size()] = '\n';
+            sendline[message.size()+1] = '\0';
             send(fd, sendline, strlen(sendline), 0);
             printf("send line %s\n", sendline);
 
@@ -332,7 +333,8 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
                 clear_array(sendline);
                 strncpy(sendline, message.c_str(), sizeof(sendline));
-                sendline[message.size()] = '\0';
+                sendline[message.size()] = '\n';
+                sendline[message.size()+1] = '\0';
                 send(fd, sendline, strlen(sendline), 0);
                 printf("send line %s\n", sendline);
             }
