@@ -5,7 +5,7 @@ int connect_to_socket(sockaddr_in servaddr, int portnum);
 
 int main(int argc, char**argv)
 {
-    int sockfd, session_sock, n, portnum, i;
+    int sockfd, session_sock, n, portnum, i, num_messages;
     struct sockaddr_in servaddr;
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
@@ -27,7 +27,8 @@ int main(int argc, char**argv)
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
-        memset(&recvline, 0, sizeof(recvline));
+        clear_array(recvline);
+        clear_array(digit_buffer);
 
         send_str = std::string(sendline);
 
@@ -35,6 +36,7 @@ int main(int argc, char**argv)
         {
             s_name = get_message(send_str, 6);
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
+            printf("Port %d\n", portnum);
             if (portnum == -1)
                 printf("Error starting chatroom");
             else
@@ -96,13 +98,40 @@ int main(int argc, char**argv)
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                 printf("Error sending message %s\n", strerror(errno));
 
-            while (1)
+            // n = recv(session_sock, recvline, sizeof(recvline), 0);
+            // num_messages = atoi(recvline);
+
+            // printf("Got %d messages\n", num_messages);
+
+            n = recv(session_sock, recvline, sizeof(recvline), 0);
+            int digit_index = 0;
+
+            printf("Got %d bytes\n", n);
+
+            for (i = 0; i < n; i++)
             {
-                int n = recv(session_sock, recvline, sizeof(recvline), 0);
-                printf("Got %d bytes\n", n);
-                printf("%s\n", recvline);
-                memset(&recvline, 0, sizeof(recvline));
+                if (recvline[i] == ' ')
+                {
+                    if (atoi(digit_buffer)) {
+                        printf("got number %d\n", atoi(digit_buffer));
+                        clear_array(digit_buffer);
+                        digit_index = 0;
+                    }
+                    // printf("\n");
+                }
+                else if (isdigit(recvline[i]))
+                {
+                    digit_buffer[digit_index++] = recvline[i];
+                }
+                else
+                {
+                    printf("%c", recvline[i]);
+                }
             }
+            printf("\n");
+            // printf("%s\n", recvline);
+            // memset(&recvline, 0, sizeof(recvline));
+
             printf("All messages got\n");
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
@@ -124,7 +153,8 @@ int main(int argc, char**argv)
 
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[])
 {
-    sendto(upd_sock, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+    if (sendto(upd_sock, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+        printf("Error with sendto %s\n", strerror(errno));
     int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
     recvline[n] = 0;
     return atoi(recvline);

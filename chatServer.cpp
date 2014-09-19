@@ -32,7 +32,7 @@ int main(int argc, char**argv)
     for (;;)
     {
         // message buffers
-        memset(&mesg, 0, sizeof(mesg));
+        clear_array(mesg);
 
         len = sizeof(cliaddr);
         n = recvfrom(upd_sock, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
@@ -100,7 +100,7 @@ int main(int argc, char**argv)
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
 {
     char reply[MESSAGE_LENGTH];
-    memset(&reply, 0, sizeof(reply));
+    clear_array(reply);
     reply_str.copy(reply, reply_str.size(), 0);
     reply[MESSAGE_LENGTH-1] = '\0';
     sendto(upd_sock, reply, strlen(reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
@@ -247,7 +247,7 @@ int serveSession(int msock)
         {
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
-                printf("Calling handle_message with socket %d\n", fd);
+                // printf("Calling handle_message with socket %d\n", fd);
                 if (handle_message(fd, last_read, messages, message_index) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
@@ -264,36 +264,37 @@ int serveSession(int msock)
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index)
 {
-    char sendline[MESSAGE_LENGTH];
-    char recvline[MESSAGE_LENGTH];
-    char digit_buffer[4];
-    memset(&sendline, 0, sizeof(sendline));
-    memset(&recvline, 0, sizeof(recvline));
+    char sendline[MESSAGE_LENGTH] = {0};
+    char recvline[MESSAGE_LENGTH] = {0};
+    // char digit_buffer[4];
+    // clear_array(sendline);
+    // clear_array(recvline);
 
     std::string message;
-    int index, message_size, i;
+    int index, message_size, i, n, mesg_len;
 
-    if (recv(fd, recvline, sizeof(recvline), 0) < 0)
+    n = recv(fd, recvline, sizeof(recvline), 0);
+    printf("recvline: %s\nsize: %d", recvline, n);
+
+    Reader reader(recvline, n);
+
+    if (n < 0)
         printf("Error receiving message %s\n", strerror(errno));
 
-    printf("Got message: %s\n", recvline);
+    // printf("Got message: %s, of size %d\n", recvline, n);
 
-    std::string mesg_str = std::string(recvline);
+    // std::string mesg_str = std::string(recvline);
+    message = reader.next_word();
+    printf("word: %s\n", message.c_str());
 
-    if (mesg_str.compare(0, 7, "Submit ") == 0)
+    if (message.compare(0, 6, "Submit") == 0)
     {
-        memset(&digit_buffer, 0, sizeof(digit_buffer));
-        for (i = 7; i < strlen(recvline); i++)
-        {
-            if (isdigit(recvline[i]))
-                digit_buffer[i - 7] = recvline[i];
-            else
-                break;
-        }
-        messages[message_index++] = get_message(recvline, i + 1);
-        printf("Got message: %s with size: %d\n", messages[message_index-1].c_str(), atoi(digit_buffer));
+        mesg_len = reader.next_int();
+        message = reader.next_line();
+        messages[message_index++] = message;
+        printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
     }
-    else if (mesg_str.compare(0, 7, "GetNext") == 0)
+    else if (message.compare(0, 7, "GetNext") == 0)
     {
         index = last_read[fd];
         if (messages.count(index) == 1) {
@@ -307,38 +308,59 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
         strncpy(sendline, message.c_str(), sizeof(sendline));
         send(fd, sendline, strlen(sendline), 0);
     }
-    else if (mesg_str.compare(0, 6, "GetAll") == 0)
+    else if (message.compare(0, 6, "GetAll") == 0)
     {
         std::stringstream ss;
+        int send_index = 0;
         ss << (message_index - last_read[fd]);
         message = ss.str();
         ss.str(std::string());
-        strncpy(sendline, message.c_str(), sizeof(sendline));
-        send(fd, sendline, strlen(sendline), 0);
-        memset(&sendline, 0, sizeof(sendline));
 
-        index = last_read[fd];
+        // for (std::string::iterator it = message.begin(); it < message.end(); it++)
+        // {
+        //     sendline[send_index++] = *it;
+        // }
+        // sendline[send_index++] = ' ';
+
+        clear_array(sendline);
+        strncpy(sendline, message.c_str(), sizeof(sendline));
+        sendline[message.size()] = '\0';
+        send(fd, sendline, strlen(sendline), 0);
+        printf("send line %s\n", sendline);
+
         for (i = last_read[fd]; i < message_index; i++)
         {
             ss << messages[i].size();
+            printf("message i is %s\n", messages[i].c_str());
             message = ss.str() + " " + messages[i];
             ss.str(std::string());
+
+            clear_array(sendline);
             strncpy(sendline, message.c_str(), sizeof(sendline));
+            sendline[message.size()] = '\0';
             send(fd, sendline, strlen(sendline), 0);
-            memset(&sendline, 0, sizeof(sendline));
+            printf("send line %s\n", sendline);
+
+            // for (std::string::iterator it = message.begin(); it < message.end(); it++)
+            // {
+            //     sendline[send_index++] = *it;
+            // }
+            // sendline[send_index++] = '\n';
         }
         last_read[fd] = i;
+        // printf("SENDING: %s\n", sendline);
+        // send(fd, sendline, strlen(sendline), 0);
 
         printf("DONE\n");
     }
-    else if (mesg_str.compare(0, 5, "Leave") == 0)
+    else if (message.compare(0, 5, "Leave") == 0)
     {
     }
-    else
-    {
-        // reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n";
-        // reply(upd_sock, cliaddr, reply_str);
-    }
+    // else
+    // {
+    //     printf("INVALID MESSAGE\n");
+    //     exit(0);
+    // }
 
     return 1;
 
