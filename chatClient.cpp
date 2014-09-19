@@ -1,12 +1,12 @@
 #include "chatutilfunctions.h"
 
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
-int connect_to_socket(sockaddr_in servaddr, int portnum);
+int connect_to_socket(sockaddr_in addr);
 
 int main(int argc, char**argv)
 {
     int sockfd, session_sock, n, portnum, i, num_messages, messages_received, mesg_len;
-    struct sockaddr_in servaddr;
+    struct sockaddr_in servaddr, sessionaddr;
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
     std::string send_str, s_name, message;
@@ -24,6 +24,10 @@ int main(int argc, char**argv)
     servaddr.sin_addr.s_addr = inet_addr(argv[1]);
     servaddr.sin_port = htons(32000);
 
+    memset(&sessionaddr, 0, sizeof(sessionaddr));
+    sessionaddr.sin_family = AF_INET;
+    sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
+
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
         clear_array(recvline);
@@ -35,13 +39,15 @@ int main(int argc, char**argv)
         if (send_str.compare(0, 5, "Start") == 0)
         {
             s_name = reader.next_line();
+            printf("sending start: %s\n", sendline);
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
+            sessionaddr.sin_port = htons(portnum);
             printf("Port %d\n", portnum);
             if (portnum == -1)
                 printf("Error starting chatroom");
             else
             {
-                session_sock = connect_to_socket(servaddr, portnum);
+                session_sock = connect_to_socket(sessionaddr);
                 printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
         }
@@ -51,11 +57,12 @@ int main(int argc, char**argv)
             send_str = "Find " + s_name;
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
+            sessionaddr.sin_port = htons(portnum);
             if (portnum == -1)
                 printf("Error joining chatroom");
             else
             {
-                session_sock = connect_to_socket(servaddr, portnum);
+                session_sock = connect_to_socket(sessionaddr);
                 printf("You have joined the chat session %s\n", s_name.c_str());
             }
         }
@@ -151,20 +158,17 @@ int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[
     if (sendto(upd_sock, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
         printf("Error with sendto %s\n", strerror(errno));
     int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+    printf("received port: %s\n", recvline);
     recvline[n] = 0;
     return atoi(recvline);
 }
 
-int connect_to_socket(sockaddr_in servaddr, int portnum)
+int connect_to_socket(sockaddr_in addr)
 {
-    // struct sockaddr_in sessionaddr;
-    // sessionaddr.sin_family = AF_INET;
-    // sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
-    servaddr.sin_port = htons(portnum);
     int session_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    if (connect(session_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-        errexit("can't connect to port %d, %s\n", portnum, strerror(errno));
+    if (connect(session_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        errexit("can't connect to port %d, %s\n", addr.sin_port, strerror(errno));
 
     return session_sock;
 }

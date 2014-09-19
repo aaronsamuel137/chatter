@@ -64,11 +64,6 @@ int main(int argc, char**argv)
 
             printf("Searching for chatroom %s\n", s_name.c_str());
 
-            // for(std::map<std::string,int>::iterator it = ports.begin(); it != ports.end(); it++)
-            // {
-            //     printf("%s -> %d\n", it->first.c_str(), it->second);
-            // }
-
             if (ports.count(s_name) == 0)
             {
                 printf("Error: no chatroom exists with name \"%s\"", s_name.c_str());
@@ -77,7 +72,6 @@ int main(int argc, char**argv)
             else
             {
                 reply(upd_sock, cliaddr, std::to_string(ports[s_name]));
-                reply(upd_sock, cliaddr, "Welcome to chatroom " + s_name + "\n");
                 printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
             }
         }
@@ -192,8 +186,8 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         // send the TCP port number back to client
         std::string port_str = std::to_string(portnum);
         port_str.copy(portnum_reply, port_str.size(), 0);
+        portnum_reply[port_str.size()] = '\0';
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
-        reply(upd_sock, upd_cliaddr, "Welcome to chatroom " + s_name + "\n");
 
         serveSession(s);
 
