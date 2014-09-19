@@ -5,11 +5,10 @@ int connect_to_socket(sockaddr_in servaddr, int portnum);
 
 int main(int argc, char**argv)
 {
-    int sockfd, session_sock, n, portnum, i, num_messages;
+    int sockfd, session_sock, n, portnum, i, num_messages, messages_received, mesg_len;
     struct sockaddr_in servaddr;
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
-    char digit_buffer[4];           // for holding message length
     std::string send_str, s_name, message;
 
     if (argc != 2)
@@ -29,13 +28,13 @@ int main(int argc, char**argv)
     {
         clear_array(recvline);
         clear_array(sendline);
-        clear_array(digit_buffer);
 
-        send_str = std::string(sendline);
+        Reader reader(sendline, strlen(sendline));
+        send_str = reader.next_word();
 
-        if (send_str.compare(0, 6, "Start ") == 0)
+        if (send_str.compare(0, 5, "Start") == 0)
         {
-            s_name = get_message(send_str, 6);
+            s_name = reader.next_line();
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             printf("Port %d\n", portnum);
             if (portnum == -1)
@@ -46,9 +45,9 @@ int main(int argc, char**argv)
                 printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
         }
-        else if (send_str.compare(0, 5, "Join ") == 0)
+        else if (send_str.compare(0, 4, "Join") == 0)
         {
-            s_name = get_message(send_str, 5);
+            s_name = reader.next_line();
             send_str = "Find " + s_name;
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
@@ -60,26 +59,18 @@ int main(int argc, char**argv)
                 printf("You have joined the chat session %s\n", s_name.c_str());
             }
         }
-        else if (send_str.compare(0, 7, "Submit ") == 0)
+        else if (send_str.compare(0, 6, "Submit") == 0)
         {
-            // make sure that a message length is included
-            memset(&digit_buffer, 0, sizeof(digit_buffer));
-            for (i = 7; i < strlen(sendline); i++)
-            {
-                if (isdigit(sendline[i]))
-                    digit_buffer[i - 7] = sendline[i];
-                else
-                    break;
-            }
-            if (atoi(digit_buffer) == 0)
+            mesg_len = reader.next_int();
+            if (mesg_len == 0)
                 printf("Error: must enter number of bytes sent.\nCorrect usage: Submit <message length> <message>\n");
             else
             {
-                message = get_message(send_str, i + 1);
+                message = reader.next_line();
                 printf("message: %s\n", message.c_str());
 
                 if (send(session_sock, sendline, strlen(sendline), 0) < 0)
-                    printf("Error sending message %s\n", strerror(errno));
+                    printf("Error sending message with Submit: %s. Have you started or joined a chat session?\n", strerror(errno));
             }
         }
         else if (send_str.compare(0, 7, "GetNext") == 0)
@@ -101,30 +92,33 @@ int main(int argc, char**argv)
 
             clear_array(recvline);
             n = recv(session_sock, recvline, sizeof(recvline), 0);
-            Reader reader(recvline, n);
+            reader = Reader(recvline, n);
 
-            int num_messages = reader.next_int();
-            int messages_received = 0;
+            num_messages = reader.next_int();
+            messages_received = 0;
 
             printf("getting %d messages\n", num_messages);
 
-            if (reader.get_index() >= n)
+            // finish reading the current buffer in case there are messages there
+            while (reader.get_index() < n)
+            {
+                mesg_len = reader.next_int();
+                message = reader.next_line();
+                printf("%s\n", message.c_str());
+                messages_received++;
+            }
+
+            while (messages_received < num_messages)
             {
                 clear_array(recvline);
                 n = recv(session_sock, recvline, sizeof(recvline), 0);
                 reader = Reader(recvline, n);
-            }
-            while (reader.get_index() < n)
-            {
-                int mesg_len = reader.next_int();
-                std::string message = reader.next_line();
-                printf("%s\n", message.c_str());
-                messages_received++;
-                if (messages_received < num_messages)
+                while (reader.get_index() < n)
                 {
-                    clear_array(recvline);
-                    n = recv(session_sock, recvline, sizeof(recvline), 0);
-                    reader = Reader(recvline, n);
+                    mesg_len = reader.next_int();
+                    message = reader.next_line();
+                    printf("%s\n", message.c_str());
+                    messages_received++;
                 }
             }
             printf("All messages got\n");
@@ -170,7 +164,7 @@ int connect_to_socket(sockaddr_in servaddr, int portnum)
     int session_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (connect(session_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-        errexit("can't connect to %s\n", portnum, strerror(errno));
+        errexit("can't connect to port %d, %s\n", portnum, strerror(errno));
 
     return session_sock;
 }
