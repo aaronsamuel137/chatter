@@ -12,6 +12,11 @@
 #include <sys/errno.h>
 #include <stdarg.h>
 
+#include <map>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sstream>
+
 #include "Reader.h"
 
 #define MESSAGE_LENGTH 128
@@ -42,6 +47,13 @@ std::string get_message(std::string input, int start_index)
 void clear_array(char *array)
 {
     memset(&array, 0, sizeof(array));
+}
+
+std::string to_string(int i)
+{
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
 }
 
 #endif
