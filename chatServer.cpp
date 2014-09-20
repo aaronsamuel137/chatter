@@ -31,19 +31,17 @@ int main(int argc, char**argv)
 
     for (;;)
     {
-        // message buffers
         clear_array(mesg);
 
         len = sizeof(cliaddr);
         n = recvfrom(upd_sock, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
 
-        mesg_str = std::string(mesg);
+        Reader reader(mesg, n);
+        mesg_str = reader.next_word();
 
-        printf("Got communication: %s", mesg);
-
-        if (mesg_str.compare(0, 6, "Start ") == 0)
+        if (mesg_str.compare(0, 5, "Start") == 0)
         {
-            s_name = get_message(mesg_str, 6);
+            s_name = reader.next_line();
 
             int portnum = sessionSocket(upd_sock, cliaddr, s_name);
             if (portnum)
@@ -58,36 +56,30 @@ int main(int argc, char**argv)
                 exit(0);
             }
         }
-        else if (mesg_str.compare(0, 5, "Find ") == 0)
+        else if (mesg_str.compare(0, 4, "Find") == 0)
         {
-            s_name = get_message(mesg_str, 5);
+            s_name = reader.next_line();
 
             printf("Searching for chatroom %s\n", s_name.c_str());
 
             if (ports.count(s_name) == 0)
             {
                 printf("Error: no chatroom exists with name \"%s\"", s_name.c_str());
-                reply(upd_sock, cliaddr, "0\0");
+                reply(upd_sock, cliaddr, "-1\0");
             }
             else
             {
-                reply(upd_sock, cliaddr, std::to_string(ports[s_name]));
                 printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
+                reply(upd_sock, cliaddr, std::to_string(ports[s_name]));
             }
         }
-        else if (mesg_str.compare(0, 10, "Terminate ") == 0)
-        {
-            s_name = get_message(mesg_str, 10);
+        // else if (mesg_str.compare(0, 10, "Terminate ") == 0)
+        // {
+        //     s_name = reader.next_line();
 
-            reply_str = "Terminating chat room " + s_name;
-            printf("Terminating chatroom \"%s\"\n", s_name.c_str());
-        }
-        else
-        {
-            reply_str = "Invalid command. Commands must beign with Start, Find or Terminate\n";
-            reply(upd_sock, cliaddr, reply_str);
-        }
-        printf("Ending loop\n");
+        //     reply_str = "Terminating chat room " + s_name;
+        //     printf("Terminating chatroom \"%s\"\n", s_name.c_str());
+        // }
     }
 }
 
