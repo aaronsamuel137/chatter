@@ -125,7 +125,7 @@ int updSocket(const char *portnum)
     /* Bind the socket */
     if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
-        fprintf(stderr, "can't bind to %s port: %s; Trying other port\n", portnum, strerror(errno));
+        fprintf(stderr, "can't bind to default port %s: %s; Trying other port\n", portnum, strerror(errno));
         sin.sin_port = htons(0); /* request a port number to be allocated by bind */
         if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
             errexit("can't bind: %s\n", strerror(errno));
@@ -135,9 +135,9 @@ int updSocket(const char *portnum)
 
             if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
                 errexit("getsockname: %s\n", strerror(errno));
-            printf("New server port number is %d\n", ntohs(sin.sin_port));
         }
     }
+    printf("Server running on port: %d\n", ntohs(sin.sin_port));
     return s;
 }
 
