@@ -23,7 +23,13 @@ int main(int argc, char**argv)
     std::map<int, std::string> messages;
     std::map<int, int> last_read;
 
+#ifdef __APPLE__
+    // OSX workaround, can't have more than 1024 fds
+    nfds = 1024;
+#else
     nfds = getdtablesize();
+#endif
+
     FD_ZERO(&afds);
     FD_SET(msock, &afds);
 
@@ -44,9 +50,7 @@ int main(int argc, char**argv)
             FD_SET(ssock, &afds);
         }
 
-        // OSX workaround, can't have more than 1024 fds
-        for (fd = 0; fd < 1024; ++fd)
-        // for (fd = 0; fd < nfds; ++fd)
+        for (fd = 0; fd < nfds; ++fd)
         {
             if (fd != msock && FD_ISSET(fd, &rfds))
             {

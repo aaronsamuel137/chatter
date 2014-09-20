@@ -11,7 +11,6 @@ char Reader::get_char()
 {
 
     char c = buffer[index++];
-    // printf("%c\n", c);
     if (index > size)
         return '\0';
     return c;
