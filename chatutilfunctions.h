@@ -54,7 +54,7 @@ class Timer
 public:
     Timer() {set();};
 
-    void set() {init = clock(); printf("set to %lu\n", init);};
+    void set() {init = clock();};
 
     // return true if more the 'seconds' seconds has passed since calling set
     bool check_seconds_passed(int seconds) {

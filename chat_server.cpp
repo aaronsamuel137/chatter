@@ -4,16 +4,25 @@
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index, Timer timer);
 
+const char *terminate = "Terminate";
+
 int main(int argc, char**argv)
 {
     struct sockaddr_in fsin;    // the from address of a client
     fd_set rfds;                // read file descriptor set
     fd_set afds;                // active file descriptor set
     unsigned int alen;          // from-address length
-    int fd, nfds;
+    int fd, nfds, upd_sock;
     int message_index = 0;
+    struct sockaddr_in servaddr;
 
     int msock = atoi(argv[1]);
+    int chat_coordinator_port = atoi(argv[2]);
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_port = htons(chat_coordinator_port);
 
     if (listen(msock, QLEN) < 0)
         errexit("can't listen: %s\n", strerror(errno));
@@ -65,9 +74,16 @@ int main(int argc, char**argv)
                 }
             }
         }
-        if (timer.check_seconds_passed(60))
+        if (timer.check_seconds_passed(5))
         {
-            printf("TERMINATE\n");
+            upd_sock = socket(AF_INET, SOCK_DGRAM, 0);
+            if (upd_sock < 0)
+                errexit("Error creating UPD socket to send Terminate message: %s\n", strerror(errno));
+            if (sendto(upd_sock, terminate, strlen(terminate), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+                printf("Error sening Terminate message to char coordinator: %s\n", strerror(errno));
+
+            printf("session on socket %d terminating due to timeout\n", msock);
+            exit(0);
         }
     }
 }

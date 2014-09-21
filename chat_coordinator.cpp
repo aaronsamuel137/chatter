@@ -4,7 +4,8 @@ extern int errno;
 
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(const char *portnum);
-int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name);
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum);
+void recvfrom_session(int session_port, int upd_sock);
 
 int main(int argc, char**argv)
 {
@@ -35,17 +36,11 @@ int main(int argc, char**argv)
         {
             s_name = reader.next_line();
 
-            int portnum = sessionSocket(upd_sock, cliaddr, s_name);
+            int portnum = sessionSocket(upd_sock, cliaddr, udp_portnum);
             if (portnum)
             {
                 ports[s_name] = portnum;
-                if (ports.count(s_name) == 1)
-                    printf("Added \"%s\" -> %d to ports maps\n", s_name.c_str(), ports[s_name]);
-            }
-            else
-            {
-                // only the child process session server will reach this point
-                exit(0);
+                printf("Added \"%s\" -> %d to ports maps\n", s_name.c_str(), ports[s_name]);
             }
         }
         else if (mesg_str.compare(0, 4, "Find") == 0)
@@ -65,14 +60,44 @@ int main(int argc, char**argv)
                 reply(upd_sock, cliaddr, std::to_string(ports[s_name]));
             }
         }
-        // else if (mesg_str.compare(0, 10, "Terminate ") == 0)
-        // {
-        //     s_name = reader.next_line();
+        else if (mesg_str.compare(0, 9, "Terminate") == 0)
+        {
+            printf("cc got Terminate message\n");
+            s_name = reader.next_line();
+            printf("terminating %s\n", s_name.c_str());
 
-        //     reply_str = "Terminating chat room " + s_name;
-        //     printf("Terminating chatroom \"%s\"\n", s_name.c_str());
-        // }
+            for (std::map<std::string, int>::iterator it = ports.begin(); it != ports.end(); it++)
+            {
+                printf("comparing with %s\n", (it->first).c_str());
+                if (s_name.compare(it->first) == 0)
+                {
+                    printf("Terminating chatroom %s\n", (it->first).c_str());
+                }
+            }
+
+        }
+        // printf("Before\n");
+
+        // // recvfrom all session servers in case a Terminate message is sent
+
+        // printf("After\n");
     }
+}
+
+void recvfrom_session(int session_port, int upd_sock)
+{
+    struct sockaddr_in session_address;
+    socklen_t len;
+    char buffer[16] = {0};
+
+    memset(&session_address, 0, sizeof(session_address));
+    session_address.sin_family = AF_INET;
+    session_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    session_address.sin_port = htons(session_port);
+
+    len = sizeof(session_address);
+    int n = recvfrom(upd_sock, buffer, MESSAGE_LENGTH, 0, (struct sockaddr *)&session_address, &len);
+    printf("RECV %s\n", buffer);
 }
 
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
@@ -87,7 +112,7 @@ void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
 int updSocket(const char *portnum)
 /*
  * Arguments:
- *      portnum   - port number of the server
+ *      portnum - port number of the server
  */
 {
     struct sockaddr_in sin; /* an Internet endpoint address  */
@@ -129,7 +154,7 @@ int updSocket(const char *portnum)
  * sessionSocket - allocate & bind a server socket using TCP
  *------------------------------------------------------------------------
  */
-int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum)
 {
     struct sockaddr_in sin;
     struct sockaddr* tcp_cliaddr;
@@ -170,7 +195,7 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, std::string s_name)
         portnum_reply[port_str.size()] = '\0';
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
-        execl("./chat_server", "chat_server", to_string(s).c_str(), (char*)NULL);
+        execl("./chat_server", "chat_server", std::to_string(s).c_str(), std::string(udp_portnum).c_str(), (char*)NULL);
         perror("execl() failure!");
 
         return 0;
