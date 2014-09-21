@@ -2,14 +2,14 @@
 
 #define QLEN 32 // maximum connection queue length
 
-int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index, Timer timer);
 
 int main(int argc, char**argv)
 {
-    struct sockaddr_in fsin;    /* the from address of a client */
-    fd_set rfds;                /* read file descriptor set */
-    fd_set afds;                /* active file descriptor set   */
-    unsigned int alen;          /* from-address length      */
+    struct sockaddr_in fsin;    // the from address of a client
+    fd_set rfds;                // read file descriptor set
+    fd_set afds;                // active file descriptor set
+    unsigned int alen;          // from-address length
     int fd, nfds;
     int message_index = 0;
 
@@ -33,12 +33,17 @@ int main(int argc, char**argv)
     FD_ZERO(&afds);
     FD_SET(msock, &afds);
 
-    while (1) {
+    Timer timer;
+    timer.set();
+
+    while (1)
+    {
         memcpy(&rfds, &afds, sizeof(rfds));
 
         if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
             errexit("select: %s\n", strerror(errno));
-        if (FD_ISSET(msock, &rfds)) {
+        if (FD_ISSET(msock, &rfds))
+        {
             int ssock;
 
             alen = sizeof(fsin);
@@ -54,22 +59,20 @@ int main(int argc, char**argv)
         {
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
-                // printf("Calling handle_message with socket %d\n", fd);
-                if (handle_message(fd, last_read, messages, message_index) == 0) {
+                if (handle_message(fd, last_read, messages, message_index, timer) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
-                // printf("Printing messages:\n");
-                // for(std::map<int,std::string>::iterator it = messages.begin(); it != messages.end(); it++)
-                // {
-                //     printf("%d -> %s\n", it->first, it->second.c_str());
-                // }
             }
+        }
+        if (timer.check_seconds_passed(60))
+        {
+            printf("TERMINATE\n");
         }
     }
 }
 
-int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index)
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index, Timer timer)
 {
     char sendline[MESSAGE_LENGTH] = {0};
     char recvline[MESSAGE_LENGTH] = {0};
@@ -101,28 +104,25 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             message = reader.next_line();
             messages[message_index++] = message;
             printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
+            timer.set();
         }
         else if (message.compare(0, 7, "GetNext") == 0)
         {
             index = last_read[fd];
-            if (messages.count(index) == 1) {
-                std::stringstream ss;
-                ss << messages[index].size();
-                message = ss.str() + " " + messages[index];
+            if (messages.count(index) == 1)
+            {
+                message = to_string(messages[index].size()) + " " + messages[index];
                 last_read[fd]++;
             }
             else
                 message = "-1";
             strncpy(sendline, message.c_str(), sizeof(sendline));
             send(fd, sendline, strlen(sendline), 0);
+            timer.set();
         }
         else if (message.compare(0, 6, "GetAll") == 0)
         {
-            std::stringstream ss;
-            int send_index = 0;
-            ss << (message_index - last_read[fd]);
-            message = ss.str();
-            ss.str(std::string());
+            message = to_string(message_index - last_read[fd]);
 
             clear_array(sendline);
             strncpy(sendline, message.c_str(), sizeof(sendline));
@@ -133,10 +133,8 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
             for (i = last_read[fd]; i < message_index; i++)
             {
-                ss << messages[i].size();
                 printf("message i is %s\n", messages[i].c_str());
-                message = ss.str() + " " + messages[i];
-                ss.str(std::string());
+                message = to_string(messages[i].size()) + " " + messages[i];
 
                 clear_array(sendline);
                 strncpy(sendline, message.c_str(), sizeof(sendline));
@@ -148,18 +146,16 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             last_read[fd] = i;
 
             printf("Finished GetAll\n");
+            timer.set();
         }
         else if (message.compare(0, 5, "Leave") == 0)
         {
             printf("closing connection with socket %d\n", fd);
+            timer.set();
             return 0;
         }
 
         printf("reader index: %d\n", reader.get_index());
     }
     return 1;
-
-    // std::string message_str = std::string(buf);
-    // messages[message_index++] = message_str.erase(message_str.find_last_not_of(" \n\r\t")+1);
 }
-

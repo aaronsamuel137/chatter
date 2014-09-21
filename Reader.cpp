@@ -9,7 +9,6 @@ Reader::Reader(char *buf, int n)
 
 char Reader::get_char()
 {
-
     char c = buffer[index++];
     if (index > size)
         return '\0';

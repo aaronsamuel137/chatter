@@ -1,4 +1,3 @@
-// #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -16,6 +15,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sstream>
+#include <time.h>
 
 #include "Reader.h"
 
@@ -24,10 +24,7 @@
 #ifndef chatutilfunctions
 #define chatutilfunctions
 
-/*------------------------------------------------------------------------
- * errexit - print an error message and exit
- *------------------------------------------------------------------------
- */
+// print an error message and exit
 int errexit(const char *format, ...)
 {
     va_list args;
@@ -38,22 +35,31 @@ int errexit(const char *format, ...)
     exit(1);
 }
 
-std::string get_message(std::string input, int start_index)
-{
-    std::string message = input.substr(start_index, input.size());
-    return message.erase(message.find_last_not_of(" \n\r\t") + 1);
-}
-
 void clear_array(char *array)
 {
     memset(&array, 0, sizeof(array));
 }
 
+// convert an int into a std::string
 std::string to_string(int i)
 {
     std::stringstream ss;
     ss << i;
     return ss.str();
 }
+
+class Timer
+{
+    clock_t init;
+public:
+    Timer() {set();};
+
+    void set() {init = clock(); printf("set to %lu\n", init);};
+
+    // return true if more the 'seconds' seconds has passed since calling set
+    bool check_seconds_passed(int seconds) {
+        return ((float)(clock() - init)) / CLOCKS_PER_SEC > seconds;
+    };
+};
 
 #endif

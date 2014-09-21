@@ -98,7 +98,7 @@ int updSocket(const char *portnum)
     sin.sin_addr.s_addr = INADDR_ANY;
 
     /* Map port number (char string) to port number (int) */
-    if ((sin.sin_port=htons((unsigned short)atoi(portnum))) == 0)
+    if ((sin.sin_port = htons((unsigned short)atoi(portnum))) == 0)
         errexit("can't get \"%s\" port number\n", portnum);
 
     /* Allocate a socket */

@@ -159,7 +159,7 @@ int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[
         printf("Error with sendto %s\n", strerror(errno));
     int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
     printf("received port: %s\n", recvline);
-    recvline[n] = 0;
+    recvline[n] = '\0';
     return atoi(recvline);
 }
 
