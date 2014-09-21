@@ -40,6 +40,13 @@ void clear_array(char *array)
     memset(&array, 0, sizeof(array));
 }
 
+std::string to_string(int i)
+{
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
+}
+
 class Timer
 {
     clock_t init;

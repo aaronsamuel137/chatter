@@ -61,7 +61,7 @@ int main(int argc, char**argv)
             else
             {
                 printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
-                reply(upd_sock, cliaddr, std::to_string(ports[s_name]));
+                reply(upd_sock, cliaddr, to_string(ports[s_name]));
             }
         }
         else if (mesg_str.compare(0, 9, "Terminate") == 0)
@@ -126,7 +126,7 @@ int updSocket(char portnum[])
             if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
                 errexit("getsockname: %s\n", strerror(errno));
         }
-        std::string new_port = std::to_string(ntohs(sin.sin_port));
+        std::string new_port = to_string(ntohs(sin.sin_port));
         int i = 0;
         for (std::string::iterator it = new_port.begin(); it != new_port.end(); it++)
         {
@@ -179,14 +179,14 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std:
     if (pid == 0)
     {
         // send the TCP port number back to client
-        std::string port_str = std::to_string(portnum);
+        std::string port_str = to_string(portnum);
         port_str.copy(portnum_reply, port_str.size(), 0);
         portnum_reply[port_str.size()] = '\0';
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
         execl("./chat_server",
             "chat_server",
-            std::to_string(s).c_str(),
+            to_string(s).c_str(),
             std::string(udp_portnum).c_str(),
             s_name.c_str(),
             (char*)NULL

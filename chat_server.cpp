@@ -134,7 +134,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             index = last_read[fd];
             if (messages.count(index) == 1)
             {
-                message = std::to_string(messages[index].size()) + " " + messages[index];
+                message = to_string(messages[index].size()) + " " + messages[index];
                 last_read[fd]++;
             }
             else
@@ -145,7 +145,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
         }
         else if (message.compare(0, 6, "GetAll") == 0)
         {
-            message = std::to_string(message_index - last_read[fd]);
+            message = to_string(message_index - last_read[fd]);
 
             clear_array(sendline);
             strncpy(sendline, message.c_str(), sizeof(sendline));
@@ -157,7 +157,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             for (i = last_read[fd]; i < message_index; i++)
             {
                 printf("message i is %s\n", messages[i].c_str());
-                message = std::to_string(messages[i].size()) + " " + messages[i];
+                message = to_string(messages[i].size()) + " " + messages[i];
 
                 clear_array(sendline);
                 strncpy(sendline, message.c_str(), sizeof(sendline));
