@@ -137,7 +137,7 @@ int main(int argc, char**argv)
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                 printf("Error sending Leave message %s\n", strerror(errno));
             else {
-                close(session_sock);
+                // close(session_sock);
                 printf("You have left the chat session %s\n", s_name.c_str());
             }
         }

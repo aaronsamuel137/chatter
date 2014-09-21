@@ -18,6 +18,7 @@ int main(int argc, char**argv)
 
     int msock = atoi(argv[1]);
     int chat_coordinator_port = atoi(argv[2]);
+    std::string s_name = std::string(argv[3]);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -27,7 +28,7 @@ int main(int argc, char**argv)
     if (listen(msock, QLEN) < 0)
         errexit("can't listen: %s\n", strerror(errno));
 
-    printf("Starting session with socket %d\n", msock);
+    printf("Starting session with socket %d and pid %d\n", msock, getpid());
 
     std::map<int, std::string> messages;
     std::map<int, int> last_read;
@@ -76,10 +77,14 @@ int main(int argc, char**argv)
         }
         if (timer.check_seconds_passed(5))
         {
+            std::string send_str = "Terminate " + s_name;
+            char terminate_buffer[32] = {0};
+            strncpy(terminate_buffer, send_str.c_str(), sizeof(terminate_buffer));
+
             upd_sock = socket(AF_INET, SOCK_DGRAM, 0);
             if (upd_sock < 0)
                 errexit("Error creating UPD socket to send Terminate message: %s\n", strerror(errno));
-            if (sendto(upd_sock, terminate, strlen(terminate), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+            if (sendto(upd_sock, terminate_buffer, strlen(terminate_buffer), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
                 printf("Error sening Terminate message to char coordinator: %s\n", strerror(errno));
 
             printf("session on socket %d terminating due to timeout\n", msock);

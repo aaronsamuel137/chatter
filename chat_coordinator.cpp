@@ -4,7 +4,7 @@ extern int errno;
 
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(const char *portnum);
-int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum);
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std::string s_name);
 void recvfrom_session(int session_port, int upd_sock);
 
 int main(int argc, char**argv)
@@ -36,7 +36,7 @@ int main(int argc, char**argv)
         {
             s_name = reader.next_line();
 
-            int portnum = sessionSocket(upd_sock, cliaddr, udp_portnum);
+            int portnum = sessionSocket(upd_sock, cliaddr, udp_portnum, s_name);
             if (portnum)
             {
                 ports[s_name] = portnum;
@@ -62,25 +62,18 @@ int main(int argc, char**argv)
         }
         else if (mesg_str.compare(0, 9, "Terminate") == 0)
         {
-            printf("cc got Terminate message\n");
             s_name = reader.next_line();
-            printf("terminating %s\n", s_name.c_str());
 
             for (std::map<std::string, int>::iterator it = ports.begin(); it != ports.end(); it++)
             {
-                printf("comparing with %s\n", (it->first).c_str());
                 if (s_name.compare(it->first) == 0)
                 {
                     printf("Terminating chatroom %s\n", (it->first).c_str());
+                    ports.erase(it);
                 }
             }
 
         }
-        // printf("Before\n");
-
-        // // recvfrom all session servers in case a Terminate message is sent
-
-        // printf("After\n");
     }
 }
 
@@ -154,7 +147,7 @@ int updSocket(const char *portnum)
  * sessionSocket - allocate & bind a server socket using TCP
  *------------------------------------------------------------------------
  */
-int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum)
+int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std::string s_name)
 {
     struct sockaddr_in sin;
     struct sockaddr* tcp_cliaddr;
@@ -195,10 +188,17 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum)
         portnum_reply[port_str.size()] = '\0';
         sendto(upd_sock, portnum_reply, strlen(portnum_reply), 0, (struct sockaddr *)&upd_cliaddr, sizeof(upd_cliaddr));
 
-        execl("./chat_server", "chat_server", std::to_string(s).c_str(), std::string(udp_portnum).c_str(), (char*)NULL);
+        execl("./chat_server",
+            "chat_server",
+            std::to_string(s).c_str(),
+            std::string(udp_portnum).c_str(),
+            s_name.c_str(),
+            (char*)NULL
+        );
+
         perror("execl() failure!");
 
-        return 0;
+        exit(1);
     }
     // parent process
     else
