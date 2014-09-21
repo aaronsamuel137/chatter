@@ -74,9 +74,9 @@ int main(int argc, char**argv)
                 {
                     printf("Terminating chatroom %s\n", (it->first).c_str());
                     ports.erase(it);
+                    break;
                 }
             }
-
         }
     }
 }

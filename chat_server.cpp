@@ -1,10 +1,9 @@
 #include "chatutilfunctions.h"
 
-#define QLEN 32 // maximum connection queue length
+#define QLEN    32 // maximum connection queue length
+#define TIMEOUT  5 // number of seconds until session server terminates due to timeout
 
-int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index, Timer timer);
-
-const char *terminate = "Terminate";
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 
 int main(int argc, char**argv)
 {
@@ -46,14 +45,33 @@ int main(int argc, char**argv)
     FD_SET(msock, &afds);
 
     Timer timer;
-    timer.set();
+
+    struct timeval timeout = {TIMEOUT, 0};
 
     while (1)
     {
         memcpy(&rfds, &afds, sizeof(rfds));
 
-        if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
+        timer.set();
+        if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, &timeout) < 0)
             errexit("select: %s\n", strerror(errno));
+
+        if (timer.check_seconds_passed(TIMEOUT))
+        {
+            std::string send_str = "Terminate " + s_name;
+            char terminate_buffer[32] = {0};
+            strncpy(terminate_buffer, send_str.c_str(), sizeof(terminate_buffer));
+
+            upd_sock = socket(AF_INET, SOCK_DGRAM, 0);
+            if (upd_sock < 0)
+                errexit("Error creating UPD socket to send Terminate message: %s\n", strerror(errno));
+            if (sendto(upd_sock, terminate_buffer, strlen(terminate_buffer), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+                printf("Error sending Terminate message to char coordinator: %s\n", strerror(errno));
+
+            printf("session on socket %d terminating due to timeout\n", msock);
+            exit(0);
+        }
+
         if (FD_ISSET(msock, &rfds))
         {
             int ssock;
@@ -71,31 +89,16 @@ int main(int argc, char**argv)
         {
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
-                if (handle_message(fd, last_read, messages, message_index, timer) == 0) {
+                if (handle_message(fd, last_read, messages, message_index) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
                 }
             }
         }
-        if (timer.check_seconds_passed(5))
-        {
-            std::string send_str = "Terminate " + s_name;
-            char terminate_buffer[32] = {0};
-            strncpy(terminate_buffer, send_str.c_str(), sizeof(terminate_buffer));
-
-            upd_sock = socket(AF_INET, SOCK_DGRAM, 0);
-            if (upd_sock < 0)
-                errexit("Error creating UPD socket to send Terminate message: %s\n", strerror(errno));
-            if (sendto(upd_sock, terminate_buffer, strlen(terminate_buffer), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-                printf("Error sening Terminate message to char coordinator: %s\n", strerror(errno));
-
-            printf("session on socket %d terminating due to timeout\n", msock);
-            exit(0);
-        }
     }
 }
 
-int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index, Timer timer)
+int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index)
 {
     char sendline[MESSAGE_LENGTH] = {0};
     char recvline[MESSAGE_LENGTH] = {0};
@@ -127,7 +130,6 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             message = reader.next_line();
             messages[message_index++] = message;
             printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
-            timer.set();
         }
         else if (message.compare(0, 7, "GetNext") == 0)
         {
@@ -141,7 +143,6 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
                 message = "-1";
             strncpy(sendline, message.c_str(), sizeof(sendline));
             send(fd, sendline, strlen(sendline), 0);
-            timer.set();
         }
         else if (message.compare(0, 6, "GetAll") == 0)
         {
@@ -169,12 +170,10 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             last_read[fd] = i;
 
             printf("Finished GetAll\n");
-            timer.set();
         }
         else if (message.compare(0, 5, "Leave") == 0)
         {
             printf("closing connection with socket %d\n", fd);
-            timer.set();
             return 0;
         }
 

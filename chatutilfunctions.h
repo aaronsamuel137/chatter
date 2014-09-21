@@ -40,6 +40,7 @@ void clear_array(char *array)
     memset(&array, 0, sizeof(array));
 }
 
+// std::to_string doesn't work with the compiler I need to use for this project
 std::string to_string(int i)
 {
     std::stringstream ss;
@@ -49,15 +50,17 @@ std::string to_string(int i)
 
 class Timer
 {
-    clock_t init;
+    time_t start, end;
+
 public:
     Timer() {set();};
 
-    void set() {init = clock();};
+    void set() {time(&start);};
 
     // return true if more the 'seconds' seconds has passed since calling set
     bool check_seconds_passed(int seconds) {
-        return ((float)(clock() - init)) / CLOCKS_PER_SEC > seconds;
+        time(&end);
+        return difftime(end, start) >= seconds;
     };
 };
 
