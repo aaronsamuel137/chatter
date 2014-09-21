@@ -11,18 +11,12 @@ int main(int argc, char**argv)
     char recvline[MESSAGE_LENGTH];
     std::string send_str, s_name, message;
 
-    if (argc != 2)
-    {
-        printf("usage: client <IP address>\n");
-        exit(1);
-    }
-
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr(argv[1]);
-    servaddr.sin_port = htons(32000);
+    servaddr.sin_port = htons(atoi(argv[2]));
 
     memset(&sessionaddr, 0, sizeof(sessionaddr));
     sessionaddr.sin_family = AF_INET;

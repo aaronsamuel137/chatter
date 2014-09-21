@@ -40,14 +40,6 @@ void clear_array(char *array)
     memset(&array, 0, sizeof(array));
 }
 
-// convert an int into a std::string
-std::string to_string(int i)
-{
-    std::stringstream ss;
-    ss << i;
-    return ss.str();
-}
-
 class Timer
 {
     clock_t init;

@@ -20,6 +20,8 @@ int main(int argc, char**argv)
     int chat_coordinator_port = atoi(argv[2]);
     std::string s_name = std::string(argv[3]);
 
+    printf("cc port %d\n", chat_coordinator_port);
+
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -132,7 +134,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             index = last_read[fd];
             if (messages.count(index) == 1)
             {
-                message = to_string(messages[index].size()) + " " + messages[index];
+                message = std::to_string(messages[index].size()) + " " + messages[index];
                 last_read[fd]++;
             }
             else
@@ -143,7 +145,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
         }
         else if (message.compare(0, 6, "GetAll") == 0)
         {
-            message = to_string(message_index - last_read[fd]);
+            message = std::to_string(message_index - last_read[fd]);
 
             clear_array(sendline);
             strncpy(sendline, message.c_str(), sizeof(sendline));
@@ -155,7 +157,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             for (i = last_read[fd]; i < message_index; i++)
             {
                 printf("message i is %s\n", messages[i].c_str());
-                message = to_string(messages[i].size()) + " " + messages[i];
+                message = std::to_string(messages[i].size()) + " " + messages[i];
 
                 clear_array(sendline);
                 strncpy(sendline, message.c_str(), sizeof(sendline));

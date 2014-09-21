@@ -3,9 +3,8 @@
 extern int errno;
 
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
-int updSocket(const char *portnum);
+int updSocket(char portnum[]);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std::string s_name);
-void recvfrom_session(int session_port, int upd_sock);
 
 int main(int argc, char**argv)
 {
@@ -14,7 +13,7 @@ int main(int argc, char**argv)
     socklen_t len;
     char mesg[MESSAGE_LENGTH];
 
-    char *udp_portnum = "32000";
+    char udp_portnum[6] = "32000";
     std::map<std::string, int> ports;
 
     std::string mesg_str, s_name, reply_str;
@@ -35,6 +34,11 @@ int main(int argc, char**argv)
         if (mesg_str.compare(0, 5, "Start") == 0)
         {
             s_name = reader.next_line();
+
+            if (ports.count(s_name) == 1)
+            {
+                printf("Error chatroom already exists\n");
+            }
 
             int portnum = sessionSocket(upd_sock, cliaddr, udp_portnum, s_name);
             if (portnum)
@@ -77,22 +81,6 @@ int main(int argc, char**argv)
     }
 }
 
-void recvfrom_session(int session_port, int upd_sock)
-{
-    struct sockaddr_in session_address;
-    socklen_t len;
-    char buffer[16] = {0};
-
-    memset(&session_address, 0, sizeof(session_address));
-    session_address.sin_family = AF_INET;
-    session_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    session_address.sin_port = htons(session_port);
-
-    len = sizeof(session_address);
-    int n = recvfrom(upd_sock, buffer, MESSAGE_LENGTH, 0, (struct sockaddr *)&session_address, &len);
-    printf("RECV %s\n", buffer);
-}
-
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
 {
     char reply[MESSAGE_LENGTH];
@@ -102,7 +90,7 @@ void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
     sendto(upd_sock, reply, strlen(reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
 }
 
-int updSocket(const char *portnum)
+int updSocket(char portnum[])
 /*
  * Arguments:
  *      portnum - port number of the server
@@ -138,6 +126,14 @@ int updSocket(const char *portnum)
             if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
                 errexit("getsockname: %s\n", strerror(errno));
         }
+        std::string new_port = std::to_string(ntohs(sin.sin_port));
+        int i = 0;
+        for (std::string::iterator it = new_port.begin(); it != new_port.end(); it++)
+        {
+            printf("%c\n", *it);
+            portnum[i++] = *it;
+        }
+        portnum[i] = '\0';
     }
     printf("Server running on port: %d\n", ntohs(sin.sin_port));
     return s;
