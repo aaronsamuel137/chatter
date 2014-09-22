@@ -35,11 +35,6 @@ int errexit(const char *format, ...)
     exit(1);
 }
 
-void clear_array(char *array)
-{
-    memset(&array, 0, sizeof(array));
-}
-
 // std::to_string doesn't work with the compiler I need to use for this project
 std::string to_string(int i)
 {

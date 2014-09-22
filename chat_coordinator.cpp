@@ -25,7 +25,7 @@ int main(int argc, char**argv)
 
     for (;;)
     {
-        clear_array(mesg);
+        memset(&mesg, 0, sizeof(mesg));
 
         len = sizeof(cliaddr);
         n = recvfrom(upd_sock, mesg, MESSAGE_LENGTH, 0, (struct sockaddr *)&cliaddr, &len);
@@ -86,7 +86,7 @@ int main(int argc, char**argv)
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str)
 {
     char reply[MESSAGE_LENGTH];
-    clear_array(reply);
+    memset(&reply, 0, sizeof(reply));
     reply_str.copy(reply, reply_str.size(), 0);
     reply[MESSAGE_LENGTH-1] = '\0';
     sendto(upd_sock, reply, strlen(reply), 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));

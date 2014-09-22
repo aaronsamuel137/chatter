@@ -160,7 +160,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
         {
             message = to_string(message_index - last_read[fd]);
 
-            clear_array(sendline);
+            memset(&sendline, 0, sizeof(sendline));
             strncpy(sendline, message.c_str(), sizeof(sendline));
             sendline[message.size()] = '\n';
             sendline[message.size()+1] = '\0';
@@ -172,7 +172,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
                 printf("message i is %s\n", messages[i].c_str());
                 message = to_string(messages[i].size()) + " " + messages[i];
 
-                clear_array(sendline);
+                memset(&sendline, 0, sizeof(sendline));
                 strncpy(sendline, message.c_str(), sizeof(sendline));
                 sendline[message.size()] = '\n';
                 sendline[message.size()+1] = '\0';
