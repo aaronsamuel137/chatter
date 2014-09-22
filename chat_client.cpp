@@ -30,22 +30,23 @@ int main(int argc, char**argv)
         Reader reader(sendline, strlen(sendline));
         send_str = reader.next_word();
 
-        if (send_str.compare(0, 5, "Start") == 0)
+        if (send_str == "Start")
         {
             s_name = reader.next_line();
+
             printf("sending start: %s\n", sendline);
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             sessionaddr.sin_port = htons(portnum);
             printf("Port %d\n", portnum);
             if (portnum == -1)
-                printf("Error starting chatroom");
+                printf("Error starting chatroom\n");
             else
             {
                 session_sock = connect_to_socket(sessionaddr);
                 printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
         }
-        else if (send_str.compare(0, 4, "Join") == 0)
+        else if (send_str == "Join")
         {
             s_name = reader.next_line();
             send_str = "Find " + s_name;
@@ -53,14 +54,14 @@ int main(int argc, char**argv)
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             sessionaddr.sin_port = htons(portnum);
             if (portnum == -1)
-                printf("Error joining chatroom");
+                printf("Error joining chatroom\n");
             else
             {
                 session_sock = connect_to_socket(sessionaddr);
                 printf("You have joined the chat session %s\n", s_name.c_str());
             }
         }
-        else if (send_str.compare(0, 6, "Submit") == 0)
+        else if (send_str == "Submit")
         {
             mesg_len = reader.next_int();
             if (mesg_len == 0)
@@ -68,10 +69,10 @@ int main(int argc, char**argv)
             else
             {
                 message = reader.next_line();
-                printf("message: %s\n", message.c_str());
 
                 if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                     printf("Error sending message with Submit: %s. Have you started or joined a chat session?\n", strerror(errno));
+                printf("message: %s\n", message.c_str());
             }
         }
         else if (send_str.compare(0, 7, "GetNext") == 0)
@@ -130,7 +131,8 @@ int main(int argc, char**argv)
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                 printf("Error sending Leave message %s\n", strerror(errno));
-            else {
+            else
+            {
                 close(session_sock);
                 printf("You have left the chat session %s\n", s_name.c_str());
             }
@@ -144,6 +146,7 @@ int main(int argc, char**argv)
         {
             printf("Invalid command: %s", sendline);
         }
+        printf("end loop\n");
     }
 }
 

@@ -23,6 +23,5 @@ session:
 client:
 	$(CC) $(FLAGS) -o chat_client chat_client.cpp $(DEPENDENCIES)
 
-#  Delete unwanted files
 clean:
 	rm $(OUT)

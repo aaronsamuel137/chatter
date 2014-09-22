@@ -69,6 +69,19 @@ int main(int argc, char**argv)
                 printf("Error sending Terminate message to char coordinator: %s\n", strerror(errno));
 
             printf("session on socket %d terminating due to timeout\n", msock);
+
+            // close sockets with all clients
+            for (fd = 0; fd < nfds; ++fd)
+            {
+                if (fd != msock && FD_ISSET(fd, &afds))
+                {
+                    printf("closing tcp connection with client %d\n", fd);
+                    close(fd);
+                    FD_CLR(fd, &afds);
+                }
+            }
+            printf("after loop\n");
+            close(msock);
             exit(0);
         }
 
@@ -90,7 +103,8 @@ int main(int argc, char**argv)
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
                 if (handle_message(fd, last_read, messages, message_index) == 0) {
-                    (void) close(fd);
+                    printf("closing tcp connection with client %d\n", fd);
+                    close(fd);
                     FD_CLR(fd, &afds);
                 }
             }
