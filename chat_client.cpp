@@ -5,7 +5,6 @@ extern int errno;
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
 int connect_to_socket(sockaddr_in addr);
 void leave(int s, std::string s_name);
-bool test_connection(int s);
 
 int main(int argc, char**argv)
 {
@@ -38,7 +37,14 @@ int main(int argc, char**argv)
         {
             if (s_name != "")
                 leave(session_sock, s_name);
+
             s_name = reader.next_line();
+            if (s_name.size() > 8)
+            {
+                printf("Invalid chat session name. Session name must be at most 8 characters long\n");
+                s_name = "";
+                continue;
+            }
 
             printf("sending start: %s\n", sendline);
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
@@ -56,7 +62,15 @@ int main(int argc, char**argv)
         {
             if (s_name != "")
                 leave(session_sock, s_name);
+
             s_name = reader.next_line();
+            if (s_name.size() > 8)
+            {
+                printf("Invalid chat session name. Session name must be at most 8 characters long\n");
+                s_name = "";
+                continue;
+            }
+
             send_str = "Find " + s_name;
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
@@ -185,16 +199,3 @@ int connect_to_socket(sockaddr_in addr)
 
     return session_sock;
 }
-
-// bool test_connection(int s)
-// {
-//     char buf[16] = {0};
-//     struct timeval tv = {0, 100};
-
-//     setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
-//     int n = recv(s, buf, sizeof(buf), 0);
-
-//     if (n < 0)
-//         printf("Error receiving message: %s\n", strerror(errno));
-//     return (n == 0) ? false : true;
-// }

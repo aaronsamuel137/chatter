@@ -119,7 +119,6 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     int index, message_size, i, n, mesg_len;
 
     n = recv(fd, recvline, sizeof(recvline), 0);
-    // printf("recvline: %s\nsize: %d\n", recvline, n);
 
     if (n < 0)
     {
