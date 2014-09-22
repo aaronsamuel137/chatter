@@ -2,6 +2,8 @@
 
 extern int errno;
 
+#define QLEN    32 // maximum connection queue length
+
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(char portnum[]);
 int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std::string s_name);
@@ -172,6 +174,9 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std:
         printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
     }
 
+    if (listen(s, QLEN) < 0)
+        errexit("can't listen: %s\n", strerror(errno));
+
     pid_t pid = fork();
     int portnum = ntohs(sin.sin_port);
 
@@ -187,7 +192,7 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std:
         execl("./chat_server",
             "chat_server",
             to_string(s).c_str(),
-            std::string(udp_portnum).c_str(),
+            udp_portnum,
             s_name.c_str(),
             (char*)NULL
         );

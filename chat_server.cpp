@@ -1,7 +1,8 @@
 #include "chatutilfunctions.h"
 
-#define QLEN    32 // maximum connection queue length
-#define TIMEOUT  5 // number of seconds until session server terminates due to timeout
+extern int errno;
+
+#define TIMEOUT 10 // number of seconds until session server terminates due to timeout
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 
@@ -25,9 +26,6 @@ int main(int argc, char**argv)
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port = htons(chat_coordinator_port);
-
-    if (listen(msock, QLEN) < 0)
-        errexit("can't listen: %s\n", strerror(errno));
 
     printf("Starting session with socket %d and pid %d\n", msock, getpid());
 

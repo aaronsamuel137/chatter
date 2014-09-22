@@ -1,7 +1,11 @@
 #include "chatutilfunctions.h"
 
+extern int errno;
+
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
 int connect_to_socket(sockaddr_in addr);
+void leave(int s, std::string s_name);
+bool test_connection(int s);
 
 int main(int argc, char**argv)
 {
@@ -10,6 +14,7 @@ int main(int argc, char**argv)
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
     std::string send_str, s_name, message;
+    s_name = "";
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -24,14 +29,15 @@ int main(int argc, char**argv)
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
-        clear_array(recvline);
-        clear_array(sendline);
+        memset(&recvline, 0, sizeof(recvline));
 
         Reader reader(sendline, strlen(sendline));
         send_str = reader.next_word();
 
         if (send_str == "Start")
         {
+            if (s_name != "")
+                leave(session_sock, s_name);
             s_name = reader.next_line();
 
             printf("sending start: %s\n", sendline);
@@ -48,6 +54,8 @@ int main(int argc, char**argv)
         }
         else if (send_str == "Join")
         {
+            if (s_name != "")
+                leave(session_sock, s_name);
             s_name = reader.next_line();
             send_str = "Find " + s_name;
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
@@ -70,7 +78,8 @@ int main(int argc, char**argv)
             {
                 message = reader.next_line();
 
-                if (send(session_sock, sendline, strlen(sendline), 0) < 0)
+                n = send(session_sock, sendline, strlen(sendline), 0);
+                if (n < 0)
                     printf("Error sending message with Submit: %s. Have you started or joined a chat session?\n", strerror(errno));
                 printf("message: %s\n", message.c_str());
             }
@@ -92,7 +101,7 @@ int main(int argc, char**argv)
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
                 printf("Error sending message %s\n", strerror(errno));
 
-            clear_array(recvline);
+            memset(&recvline, 0, sizeof(recvline));
             n = recv(session_sock, recvline, sizeof(recvline), 0);
             reader = Reader(recvline, n);
 
@@ -112,7 +121,7 @@ int main(int argc, char**argv)
 
             while (messages_received < num_messages)
             {
-                clear_array(recvline);
+                memset(&recvline, 0, sizeof(recvline));
                 n = recv(session_sock, recvline, sizeof(recvline), 0);
                 reader = Reader(recvline, n);
                 while (reader.get_index() < n)
@@ -127,15 +136,8 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
         {
-            send_str = "Leave";
-            strncpy(sendline, send_str.c_str(), sizeof(sendline));
-            if (send(session_sock, sendline, strlen(sendline), 0) < 0)
-                printf("Error sending Leave message %s\n", strerror(errno));
-            else
-            {
-                close(session_sock);
-                printf("You have left the chat session %s\n", s_name.c_str());
-            }
+            s_name = ""; // reset s_name to be an empty string
+            leave(session_sock, s_name);
         }
         else if (send_str.compare(0, 4, "Exit") == 0)
         {
@@ -146,7 +148,19 @@ int main(int argc, char**argv)
         {
             printf("Invalid command: %s", sendline);
         }
-        printf("end loop\n");
+        memset(&sendline, 0, sizeof(sendline));
+    }
+}
+
+void leave(int s, std::string s_name)
+{
+    char leave_str[6] = "Leave";
+    if (send(s, leave_str, strlen(leave_str), 0) < 0)
+        printf("Error sending Leave message %s\n", strerror(errno));
+    else
+    {
+        close(s);
+        printf("You have left the chat session %s\n", s_name.c_str());
     }
 }
 
@@ -155,6 +169,8 @@ int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[
     if (sendto(upd_sock, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
         printf("Error with sendto %s\n", strerror(errno));
     int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
+    if (n < 0)
+        printf("Error calling recvfrom %s\n", strerror(errno));
     printf("received port: %s\n", recvline);
     recvline[n] = '\0';
     return atoi(recvline);
@@ -169,3 +185,16 @@ int connect_to_socket(sockaddr_in addr)
 
     return session_sock;
 }
+
+// bool test_connection(int s)
+// {
+//     char buf[16] = {0};
+//     struct timeval tv = {0, 100};
+
+//     setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
+//     int n = recv(s, buf, sizeof(buf), 0);
+
+//     if (n < 0)
+//         printf("Error receiving message: %s\n", strerror(errno));
+//     return (n == 0) ? false : true;
+// }
