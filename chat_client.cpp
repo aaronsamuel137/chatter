@@ -1,50 +1,76 @@
 #include "chatutilfunctions.h"
 
+#include <netdb.h>
+
+#ifndef INADDR_NONE
+#define INADDR_NONE 0xffffffff
+#endif  /* INADDR_NONE */
+
 extern int errno;
 
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
 int connect_to_socket(sockaddr_in addr);
 void leave(int s, std::string s_name);
-int connect_updsock(const char *host, const char *portnum);
 
 int main(int argc, char**argv)
 {
     int sockfd, session_sock, n, portnum, i, num_messages, messages_received, mesg_len;
     struct sockaddr_in servaddr, sessionaddr;
+    struct hostent *phe;    // pointer to host information entry
     char sendline[MESSAGE_LENGTH];
     char recvline[MESSAGE_LENGTH];
     std::string send_str, s_name, message;
     s_name = "";
 
-    char *host = "localhost"; // host to use if none supplied
-    char *portnum_array = "5004";   // default server port number
+    char* host;
+    char* port;
 
-    switch (argc) {
+    switch (argc)
+    {
     case 1:
         host = "localhost";
+        port = "32000";
         break;
-    case 3:
-        host = argv[2];
-        // FALL THROUGH
-    case 2:
-        portnum_array = argv[1];
-        break;
-    default:
-        fprintf(stderr, "usage: chat_client [host [port]]\n");
-        exit(1);
-    }
 
-    sockfd = connect_updsock(host, portnum_array);
-    // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    case 2:
+        host = "localhost";
+        port = argv[1];
+        break;
+
+    case 3:
+        host = argv[1];
+        port = argv[2];
+        break;
+
+    default:
+        printf("Usage: chat_client [server ip] [server port number] OR chat_client [server port number] (assuming localhost) \n");
+        exit(0);
+    }
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(argv[1]);
-    servaddr.sin_port = htons(atoi(argv[2]));
 
     memset(&sessionaddr, 0, sizeof(sessionaddr));
     sessionaddr.sin_family = AF_INET;
-    sessionaddr.sin_addr.s_addr = inet_addr(argv[1]);
+
+    // Map port number (char string) to port number (int)
+    if ((servaddr.sin_port = htons((unsigned short)atoi(port))) == 0)
+        errexit("can't get \"%s\" port number\n", port);
+
+    // Map host name to IP address, allowing for dotted decimal
+    if ( (phe = gethostbyname(host)) )
+    {
+        memcpy(&servaddr.sin_addr, phe->h_addr, phe->h_length);
+        memcpy(&sessionaddr.sin_addr, phe->h_addr, phe->h_length);
+    }
+    else if ( (servaddr.sin_addr.s_addr = inet_addr(host)) == INADDR_NONE )
+        errexit("can't get \"%s\" host entry\n", host);
+
+    // Allocate a socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+        errexit("can't create socket: %s\n", strerror(errno));
+
 
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
@@ -224,36 +250,4 @@ int connect_to_socket(sockaddr_in addr)
         errexit("can't connect to port %d, %s\n", addr.sin_port, strerror(errno));
 
     return session_sock;
-}
-
-int connect_updsock(const char *host, const char *portnum)
-/*
- * Arguments:
- *      host      - name of host to which connection is desired
- *      portnum   - server port number
- */
-{
-    struct hostent *phe;    // pointer to host information entry
-    struct sockaddr_in sin; // an Internet endpoint address
-    int    s;               // socket descriptor
-
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-
-    // Map port number (char string) to port number (int)
-    if ((sin.sin_port = htons((unsigned short)atoi(portnum))) == 0)
-        errexit("can't get \"%s\" port number\n", portnum);
-
-    // Map host name to IP address, allowing for dotted decimal
-    if ( phe = gethostbyname(host) )
-        memcpy(&sin.sin_addr, phe->h_addr, phe->h_length);
-    else if ( (sin.sin_addr.s_addr = inet_addr(host)) == INADDR_NONE )
-        errexit("can't get \"%s\" host entry\n", host);
-
-    // Allocate a socket
-    s = socket(AF_INET, SOCK_DGRAM, 0);
-    if (s < 0)
-        errexit("can't create socket: %s\n", strerror(errno));
-
-    return s;
 }
