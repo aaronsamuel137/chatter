@@ -91,6 +91,12 @@ int main(int argc, char**argv)
             else
             {
                 message = reader.next_line();
+                if (message.size() > 79)
+                {
+                    printf("Invalid message. Messages must be at most 80 characters\n");
+                    memset(&recvline, 0, sizeof(recvline));
+                    continue;
+                }
 
                 n = send(session_sock, sendline, strlen(sendline), 0);
                 if (n < 0)
