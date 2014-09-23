@@ -81,9 +81,6 @@ int main(int argc, char**argv)
 
         if (send_str == "Start")
         {
-            if (s_name != "")
-                leave(session_sock, s_name);
-
             s_name = reader.next_line();
             if (s_name.size() > 8)
             {
@@ -106,9 +103,6 @@ int main(int argc, char**argv)
         }
         else if (send_str == "Join")
         {
-            if (s_name != "")
-                leave(session_sock, s_name);
-
             s_name = reader.next_line();
             if (s_name.size() > 8)
             {
