@@ -5,6 +5,7 @@ extern int errno;
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
 int connect_to_socket(sockaddr_in addr);
 void leave(int s, std::string s_name);
+int connect_updsock(const char *host, const char *portnum);
 
 int main(int argc, char**argv)
 {
@@ -15,7 +16,26 @@ int main(int argc, char**argv)
     std::string send_str, s_name, message;
     s_name = "";
 
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    char *host = "localhost"; // host to use if none supplied
+    char *portnum_array = "5004";   // default server port number
+
+    switch (argc) {
+    case 1:
+        host = "localhost";
+        break;
+    case 3:
+        host = argv[2];
+        // FALL THROUGH
+    case 2:
+        portnum_array = argv[1];
+        break;
+    default:
+        fprintf(stderr, "usage: chat_client [host [port]]\n");
+        exit(1);
+    }
+
+    sockfd = connect_updsock(host, portnum_array);
+    // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -204,4 +224,36 @@ int connect_to_socket(sockaddr_in addr)
         errexit("can't connect to port %d, %s\n", addr.sin_port, strerror(errno));
 
     return session_sock;
+}
+
+int connect_updsock(const char *host, const char *portnum)
+/*
+ * Arguments:
+ *      host      - name of host to which connection is desired
+ *      portnum   - server port number
+ */
+{
+    struct hostent *phe;    // pointer to host information entry
+    struct sockaddr_in sin; // an Internet endpoint address
+    int    s;               // socket descriptor
+
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+
+    // Map port number (char string) to port number (int)
+    if ((sin.sin_port = htons((unsigned short)atoi(portnum))) == 0)
+        errexit("can't get \"%s\" port number\n", portnum);
+
+    // Map host name to IP address, allowing for dotted decimal
+    if ( phe = gethostbyname(host) )
+        memcpy(&sin.sin_addr, phe->h_addr, phe->h_length);
+    else if ( (sin.sin_addr.s_addr = inet_addr(host)) == INADDR_NONE )
+        errexit("can't get \"%s\" host entry\n", host);
+
+    // Allocate a socket
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s < 0)
+        errexit("can't create socket: %s\n", strerror(errno));
+
+    return s;
 }
