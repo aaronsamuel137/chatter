@@ -21,6 +21,9 @@ public:
     // Handles ints of 4 digits maximum
     int next_int();
 
+    // returns next n chars from the array
+    std::string next_n(int n);
+
     // Returns a std::string comprised of the chars from the current index of the Reader until a \n or \0 char
     std::string next_line();
 

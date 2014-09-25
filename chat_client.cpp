@@ -6,6 +6,8 @@
 #define INADDR_NONE 0xffffffff
 #endif  /* INADDR_NONE */
 
+#define LOGGING false
+
 extern int errno;
 
 int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[]);
@@ -71,7 +73,7 @@ int main(int argc, char**argv)
     if (sockfd < 0)
         errexit("can't create socket: %s\n", strerror(errno));
 
-
+    // main loop for getting text from client
     while (fgets(sendline, MESSAGE_LENGTH, stdin) != NULL)
     {
         memset(&recvline, 0, sizeof(recvline));
@@ -89,10 +91,10 @@ int main(int argc, char**argv)
                 continue;
             }
 
-            printf("sending start: %s\n", sendline);
+            if (LOGGING) printf("sending start: %s\n", sendline);
+
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             sessionaddr.sin_port = htons(portnum);
-            printf("Port %d\n", portnum);
             if (portnum == -1)
                 printf("Error starting chatroom\n");
             else
@@ -141,7 +143,8 @@ int main(int argc, char**argv)
                 n = send(session_sock, sendline, strlen(sendline), 0);
                 if (n < 0)
                     printf("Error sending message with Submit: %s. Have you started or joined a chat session?\n", strerror(errno));
-                printf("message: %s\n", message.c_str());
+
+                if (LOGGING) printf("sent message: %s\n", message.c_str());
             }
         }
         else if (send_str.compare(0, 7, "GetNext") == 0)
@@ -168,7 +171,7 @@ int main(int argc, char**argv)
             num_messages = reader.next_int();
             messages_received = 0;
 
-            printf("getting %d messages\n", num_messages);
+            if (LOGGING) printf("getting %d messages\n", num_messages);
 
             // finish reading the current buffer in case there are messages there
             while (reader.get_index() < n)
@@ -192,7 +195,8 @@ int main(int argc, char**argv)
                     messages_received++;
                 }
             }
-            printf("All messages got\n");
+
+            if (LOGGING) printf("All messages got\n");
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
         {
@@ -231,7 +235,7 @@ int send_upd(int upd_sock, sockaddr_in servaddr, char sendline[], char recvline[
     int n = recvfrom(upd_sock, recvline, MESSAGE_LENGTH, 0, NULL, NULL);
     if (n < 0)
         printf("Error calling recvfrom %s\n", strerror(errno));
-    printf("received port: %s\n", recvline);
+    if (LOGGING) printf("received port: %s\n", recvline);
     recvline[n] = '\0';
     return atoi(recvline);
 }

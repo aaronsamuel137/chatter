@@ -2,7 +2,8 @@
 
 extern int errno;
 
-#define QLEN    32 // maximum connection queue length
+#define QLEN 32 // maximum connection queue length
+#define LOGGING false
 
 void reply(int upd_sock, sockaddr_in &cliaddr, std::string reply_str);
 int updSocket(char portnum[]);
@@ -21,7 +22,7 @@ int main(int argc, char**argv)
     std::string mesg_str, s_name, reply_str;
 
     upd_sock = updSocket(udp_portnum);
-    printf("Starting UDP socket with number %d\n", upd_sock);
+    if (LOGGING) printf("Starting UDP socket with number %d\n", upd_sock);
 
     for (;;)
     {
@@ -39,30 +40,32 @@ int main(int argc, char**argv)
 
             if (ports.count(s_name) == 1)
             {
-                printf("Error chatroom already exists\n");
+                if (LOGGING) printf("Error chatroom already exists\n");
+                reply(upd_sock, cliaddr, "-1\0");
+                continue;
             }
 
             int portnum = sessionSocket(upd_sock, cliaddr, udp_portnum, s_name);
             if (portnum)
             {
                 ports[s_name] = portnum;
-                printf("Added \"%s\" -> %d to ports maps\n", s_name.c_str(), ports[s_name]);
+                if (LOGGING) printf("Added \"%s\" -> %d to ports maps\n", s_name.c_str(), ports[s_name]);
             }
         }
         else if (mesg_str.compare(0, 4, "Find") == 0)
         {
             s_name = reader.next_line();
 
-            printf("Searching for chatroom %s\n", s_name.c_str());
+            if (LOGGING) printf("Searching for chatroom %s\n", s_name.c_str());
 
             if (ports.count(s_name) == 0)
             {
-                printf("Error: no chatroom exists with name \"%s\"", s_name.c_str());
+                if (LOGGING) printf("Error: no chatroom exists with name \"%s\"", s_name.c_str());
                 reply(upd_sock, cliaddr, "-1\0");
             }
             else
             {
-                printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
+                if (LOGGING) printf("chatroom %s on port %d\n", s_name.c_str(), ports[s_name]);
                 reply(upd_sock, cliaddr, to_string(ports[s_name]));
             }
         }
@@ -74,7 +77,7 @@ int main(int argc, char**argv)
             {
                 if (s_name.compare(it->first) == 0)
                 {
-                    printf("Terminating chatroom %s\n", (it->first).c_str());
+                    if (LOGGING) printf("Terminating chatroom %s\n", (it->first).c_str());
                     ports.erase(it);
                     break;
                 }
@@ -171,7 +174,7 @@ int sessionSocket(int upd_sock, sockaddr_in upd_cliaddr, char *udp_portnum, std:
 
         if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
             errexit("getsockname: %s\n", strerror(errno));
-        printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
+        if (LOGGING) printf("Starting TCP socket on port %d\n", ntohs(sin.sin_port));
     }
 
     if (listen(s, QLEN) < 0)

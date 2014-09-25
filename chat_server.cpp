@@ -2,7 +2,8 @@
 
 extern int errno;
 
-#define TIMEOUT 10 // number of seconds until session server terminates due to timeout
+#define TIMEOUT 60 // number of seconds until session server terminates due to timeout
+#define LOGGING false
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 
@@ -20,14 +21,14 @@ int main(int argc, char**argv)
     int chat_coordinator_port = atoi(argv[2]);
     std::string s_name = std::string(argv[3]);
 
-    printf("cc port %d\n", chat_coordinator_port);
+    if (LOGGING) printf("cc port %d\n", chat_coordinator_port);
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port = htons(chat_coordinator_port);
 
-    printf("Starting session with socket %d and pid %d\n", msock, getpid());
+    if (LOGGING)  printf("Starting session with socket %d and pid %d\n", msock, getpid());
 
     std::map<int, std::string> messages;
     std::map<int, int> last_read;
@@ -66,19 +67,17 @@ int main(int argc, char**argv)
             if (sendto(upd_sock, terminate_buffer, strlen(terminate_buffer), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
                 printf("Error sending Terminate message to char coordinator: %s\n", strerror(errno));
 
-            printf("session on socket %d terminating due to timeout\n", msock);
+            if (LOGGING) printf("session on socket %d terminating due to timeout\n", msock);
 
             // close sockets with all clients
             for (fd = 0; fd < nfds; ++fd)
             {
                 if (fd != msock && FD_ISSET(fd, &afds))
                 {
-                    printf("closing tcp connection with client %d\n", fd);
                     close(fd);
                     FD_CLR(fd, &afds);
                 }
             }
-            printf("after loop\n");
             close(msock);
             exit(0);
         }
@@ -92,7 +91,7 @@ int main(int argc, char**argv)
             if (ssock < 0)
                 errexit("accept: %s\n", strerror(errno));
             last_read[ssock] = 0;
-            printf("Accepted socket %d\n", ssock);
+            if (LOGGING) printf("Accepted socket %d\n", ssock);
             FD_SET(ssock, &afds);
         }
 
@@ -101,7 +100,6 @@ int main(int argc, char**argv)
             if (fd != msock && FD_ISSET(fd, &rfds))
             {
                 if (handle_message(fd, last_read, messages, message_index) == 0) {
-                    printf("closing tcp connection with client %d\n", fd);
                     close(fd);
                     FD_CLR(fd, &afds);
                 }
@@ -132,15 +130,14 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
     {
 
         message = reader.next_word();
-        printf("word: %s\n", message.c_str());
-        printf("\n");
+        if (LOGGING) printf("word: %s\n", message.c_str());
 
         if (message.compare(0, 6, "Submit") == 0)
         {
             mesg_len = reader.next_int();
             message = reader.next_line();
             messages[message_index++] = message;
-            printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
+            if (LOGGING) printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
         }
         else if (message.compare(0, 7, "GetNext") == 0)
         {
@@ -164,7 +161,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
             sendline[message.size()] = '\n';
             sendline[message.size()+1] = '\0';
             send(fd, sendline, strlen(sendline), 0);
-            printf("send line %s\n", sendline);
+            if (LOGGING) printf("send line %s\n", sendline);
 
             for (i = last_read[fd]; i < message_index; i++)
             {
@@ -176,19 +173,17 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
                 sendline[message.size()] = '\n';
                 sendline[message.size()+1] = '\0';
                 send(fd, sendline, strlen(sendline), 0);
-                printf("send line %s\n", sendline);
+                if (LOGGING) printf("send line %s\n", sendline);
             }
             last_read[fd] = i;
 
-            printf("Finished GetAll\n");
+            if (LOGGING) printf("Finished GetAll\n");
         }
         else if (message.compare(0, 5, "Leave") == 0)
         {
-            printf("closing connection with socket %d\n", fd);
+            if (LOGGING) printf("closing connection with socket %d\n", fd);
             return 0;
         }
-
-        printf("reader index: %d\n", reader.get_index());
     }
     return 1;
 }

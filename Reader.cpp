@@ -38,6 +38,26 @@ int Reader::next_int()
     return atoi(digit_buffer);
 }
 
+std::string Reader::next_n(int n)
+{
+    char line_buffer[80] = {0};
+    int line_index = 0;
+    char c;
+
+    for (int i = 0; i < n; i++)
+    {
+        c = get_char();
+        if (c == '\0')
+        {
+            line_buffer[line_index] = '\0';
+            return std::string(line_buffer);
+        }
+        else
+            line_buffer[line_index++] = c;
+    }
+    return std::string(line_buffer);
+}
+
 std::string Reader::next_line()
 {
     char line_buffer[80] = {0};
