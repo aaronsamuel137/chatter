@@ -81,7 +81,7 @@ int main(int argc, char**argv)
         Reader reader(sendline, strlen(sendline));
         send_str = reader.next_word();
 
-        if (send_str == "Start")
+        if (strncmp(sendline, "Start", 5) == 0)
         {
             s_name = reader.next_line();
             if (s_name.size() > 8)
@@ -103,7 +103,7 @@ int main(int argc, char**argv)
                 printf("A new chat session %s has been created and you have joined this session\n", s_name.c_str());
             }
         }
-        else if (send_str == "Join")
+        else if (strncmp(sendline, "Join", 4) == 0)
         {
             s_name = reader.next_line();
             if (s_name.size() > 8)
@@ -125,7 +125,7 @@ int main(int argc, char**argv)
                 printf("You have joined the chat session %s\n", s_name.c_str());
             }
         }
-        else if (send_str == "Submit")
+        else if (strncmp(sendline, "Submit", 6) == 0)
         {
             message_length = reader.next_int();
             if (message_length == 0)
@@ -150,7 +150,7 @@ int main(int argc, char**argv)
                 if (LOGGING) printf("sent message: %s\n", message.c_str());
             }
         }
-        else if (send_str.compare(0, 7, "GetNext") == 0)
+        else if (strncmp(sendline, "GetNext", 7) == 0)
         {
             send_str = "GetNext";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
@@ -183,7 +183,7 @@ int main(int argc, char**argv)
                 printf("%s\n", message.c_str());
             }
         }
-        else if (send_str.compare(0, 6, "GetAll") == 0)
+        else if (strncmp(sendline, "GetAll", 6) == 0)
         {
             send_str = "GetAll";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
@@ -233,12 +233,12 @@ int main(int argc, char**argv)
 
             if (LOGGING) printf("All messages got\n");
         }
-        else if (send_str.compare(0, 5, "Leave") == 0)
+        else if (strncmp(sendline, "Leave", 5) == 0)
         {
             leave(session_sock, s_name);
             s_name = ""; // reset s_name to be an empty string
         }
-        else if (send_str.compare(0, 4, "Exit") == 0)
+        else if (strncmp(sendline, "Exit", 4) == 0)
         {
             printf("Bye!\n");
             exit(0);
