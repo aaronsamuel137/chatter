@@ -3,7 +3,7 @@
 extern int errno;
 
 #define TIMEOUT 60 // number of seconds until session server terminates due to timeout
-#define LOGGING false
+#define LOGGING true
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 
@@ -128,14 +128,13 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
     while (reader.get_index() < n)
     {
-
         message = reader.next_word();
         if (LOGGING) printf("word: %s\n", message.c_str());
 
         if (message.compare(0, 6, "Submit") == 0)
         {
             mesg_len = reader.next_int();
-            message = reader.next_line();
+            message = reader.next_n(mesg_len);
             messages[message_index++] = message;
             if (LOGGING) printf("Got message: %s with size: %d\n", message.c_str(), mesg_len);
         }

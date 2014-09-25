@@ -2,12 +2,17 @@
 
 Reader::Reader(char *buf, int n)
 {
+    if (n > 127)
+    {
+        printf("ERROR: reader size can't be more than 127\n");
+        exit(1);
+    }
     index = 0;
     size = n;
     buffer = buf;
 }
 
-char Reader::get_char()
+char Reader::next_char()
 {
     char c = buffer[index++];
     if (index > size)
@@ -24,7 +29,7 @@ int Reader::next_int()
 
     while (1)
     {
-        c = get_char();
+        c = next_char();
         if (c == '\0')
             return 0;
         if (isdigit(c))
@@ -40,13 +45,13 @@ int Reader::next_int()
 
 std::string Reader::next_n(int n)
 {
-    char line_buffer[80] = {0};
+    char line_buffer[128] = {0};
     int line_index = 0;
     char c;
 
     for (int i = 0; i < n; i++)
     {
-        c = get_char();
+        c = next_char();
         if (c == '\0')
         {
             line_buffer[line_index] = '\0';
@@ -55,18 +60,20 @@ std::string Reader::next_n(int n)
         else
             line_buffer[line_index++] = c;
     }
+    // discard trailing newline after n chars if it is there
+    if (buffer[index] == '\n') index++;
     return std::string(line_buffer);
 }
 
 std::string Reader::next_line()
 {
-    char line_buffer[80] = {0};
+    char line_buffer[128] = {0};
     int line_index = 0;
     char c;
 
     while (1)
     {
-        c = get_char();
+        c = next_char();
         if (c == '\n' || c == '\0')
         {
             line_buffer[line_index] = '\0';
@@ -79,13 +86,13 @@ std::string Reader::next_line()
 
 std::string Reader::next_word()
 {
-    char word_buffer[80] = {0};
+    char word_buffer[128] = {0};
     int word_index = 0;
     char c;
 
     while (1)
     {
-        c = get_char();
+        c = next_char();
         if (c == ' ' || c == '\0')
         {
             word_buffer[word_index] = '\0';

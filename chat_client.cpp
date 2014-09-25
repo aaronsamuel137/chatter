@@ -24,8 +24,8 @@ int main(int argc, char**argv)
     std::string send_str, s_name, message;
     s_name = "";
 
-    char* host;
-    char* port;
+    const char* host;
+    const char* port;
 
     switch (argc)
     {
@@ -96,7 +96,7 @@ int main(int argc, char**argv)
             portnum = send_upd(sockfd, servaddr, sendline, recvline);
             sessionaddr.sin_port = htons(portnum);
             if (portnum == -1)
-                printf("Error starting chatroom\n");
+                printf("Error starting chatroom. Chatroom name is already in use.\n");
             else
             {
                 session_sock = connect_to_socket(sessionaddr);
@@ -132,7 +132,7 @@ int main(int argc, char**argv)
                 printf("Error: must enter number of bytes sent.\nCorrect usage: Submit <message length> <message>\n");
             else
             {
-                message = reader.next_line();
+                message = reader.next_n(message_length);
                 if (message.size() > 79)
                 {
                     printf("Invalid message. Messages must be at most 80 characters\n");
@@ -142,7 +142,10 @@ int main(int argc, char**argv)
 
                 n = send(session_sock, sendline, strlen(sendline), 0);
                 if (n < 0)
+                {
                     printf("Error sending message with Submit: %s. Have you started or joined a chat session?\n", strerror(errno));
+                    continue;
+                }
 
                 if (LOGGING) printf("sent message: %s\n", message.c_str());
             }
@@ -166,7 +169,7 @@ int main(int argc, char**argv)
 
             reader = Reader(recvline, n);
             message_length = reader.next_int();
-            message = reader.next_line();
+            message = reader.next_n(message_length);
 
             if (LOGGING) printf("message len: %d\n", message_length);
 
@@ -209,7 +212,7 @@ int main(int argc, char**argv)
             while (reader.get_index() < n)
             {
                 message_length = reader.next_int();
-                message = reader.next_line();
+                message = reader.next_n(message_length);
                 printf("%s\n", message.c_str());
                 messages_received++;
             }
@@ -222,7 +225,7 @@ int main(int argc, char**argv)
                 while (reader.get_index() < n)
                 {
                     message_length = reader.next_int();
-                    message = reader.next_line();
+                    message = reader.next_n(message_length);
                     printf("%s\n", message.c_str());
                     messages_received++;
                 }
@@ -232,8 +235,8 @@ int main(int argc, char**argv)
         }
         else if (send_str.compare(0, 5, "Leave") == 0)
         {
-            s_name = ""; // reset s_name to be an empty string
             leave(session_sock, s_name);
+            s_name = ""; // reset s_name to be an empty string
         }
         else if (send_str.compare(0, 4, "Exit") == 0)
         {

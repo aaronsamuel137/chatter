@@ -10,12 +10,12 @@ class Reader
     int index, size;
     char *buffer;
 
-private:
-    char get_char();
-
 public:
     // Initialize a Reader with a pointer to the char array and an int that indicates the size
     Reader(char*, int);
+
+    // Returns the next char from the array
+    char next_char();
 
     // Returns the next integer from the char array and converts it to int
     // Handles ints of 4 digits maximum
