@@ -165,7 +165,7 @@ int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::str
 
             for (i = last_read[fd]; i < message_index; i++)
             {
-                printf("message i is %s\n", messages[i].c_str());
+                if (LOGGING) printf("message i is %s\n", messages[i].c_str());
                 message = to_string(messages[i].size()) + " " + messages[i];
 
                 memset(&sendline, 0, sizeof(sendline));

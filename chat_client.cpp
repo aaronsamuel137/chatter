@@ -16,7 +16,7 @@ void leave(int s, std::string s_name);
 
 int main(int argc, char**argv)
 {
-    int sockfd, session_sock, n, portnum, i, num_messages, messages_received, mesg_len;
+    int sockfd, session_sock, n, portnum, i, num_messages, messages_received, message_length;
     struct sockaddr_in servaddr, sessionaddr;
     struct hostent *phe;    // pointer to host information entry
     char sendline[MESSAGE_LENGTH];
@@ -127,8 +127,8 @@ int main(int argc, char**argv)
         }
         else if (send_str == "Submit")
         {
-            mesg_len = reader.next_int();
-            if (mesg_len == 0)
+            message_length = reader.next_int();
+            if (message_length == 0)
                 printf("Error: must enter number of bytes sent.\nCorrect usage: Submit <message length> <message>\n");
             else
             {
@@ -152,23 +152,55 @@ int main(int argc, char**argv)
             send_str = "GetNext";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
-                printf("Error sending message %s\n", strerror(errno));
+            {
+                printf("Error sending message: %s. Have you started or joined a chat session?\n", strerror(errno));
+                continue;
+            }
             if (recv(session_sock, recvline, sizeof(recvline), 0) < 0)
-                printf("Error receiving message %s\n", strerror(errno));
-            printf("%s\n", recvline);
+            {
+                printf("Error receiving message: %s. Have you started or joined a chat session?\n", strerror(errno));
+                continue;
+            }
+
+            if (LOGGING) printf("%s\n", recvline);
+
+            reader = Reader(recvline, n);
+            message_length = reader.next_int();
+            message = reader.next_line();
+
+            if (LOGGING) printf("message len: %d\n", message_length);
+
+            if (message_length <= 0)
+            {
+                printf("No new message in the chat session\n");
+                continue;
+            }
+            else
+            {
+                printf("%s\n", message.c_str());
+            }
         }
         else if (send_str.compare(0, 6, "GetAll") == 0)
         {
             send_str = "GetAll";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
-                printf("Error sending message %s\n", strerror(errno));
+            {
+                printf("Error sending message: %s. Have you started or joined a chat session?\n", strerror(errno));
+                continue;
+            }
 
             memset(&recvline, 0, sizeof(recvline));
             n = recv(session_sock, recvline, sizeof(recvline), 0);
             reader = Reader(recvline, n);
 
             num_messages = reader.next_int();
+            if (num_messages <= 0)
+            {
+                printf("No new messages in the chat session\n");
+                continue;
+            }
+
             messages_received = 0;
 
             if (LOGGING) printf("getting %d messages\n", num_messages);
@@ -176,7 +208,7 @@ int main(int argc, char**argv)
             // finish reading the current buffer in case there are messages there
             while (reader.get_index() < n)
             {
-                mesg_len = reader.next_int();
+                message_length = reader.next_int();
                 message = reader.next_line();
                 printf("%s\n", message.c_str());
                 messages_received++;
@@ -189,7 +221,7 @@ int main(int argc, char**argv)
                 reader = Reader(recvline, n);
                 while (reader.get_index() < n)
                 {
-                    mesg_len = reader.next_int();
+                    message_length = reader.next_int();
                     message = reader.next_line();
                     printf("%s\n", message.c_str());
                     messages_received++;
