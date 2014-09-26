@@ -4,13 +4,6 @@ DEPENDENCIES=Reader.cpp
 # compiler
 CC=g++
 
-UNAME := $(shell uname)
-
-# if using OSX use this flag so the call to select doesn't break
-ifeq ($(UNAME), Darwin)
-	# FLAGS=-D_DARWIN_UNLIMITED_SELECT=1
-endif
-
 #  Main target
 all: coordinator session client
 
