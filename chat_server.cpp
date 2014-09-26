@@ -3,7 +3,7 @@
 extern int errno;
 
 #define TIMEOUT 60 // number of seconds until session server terminates due to timeout
-#define LOGGING true
+#define LOGGING false
 
 int handle_message(int fd, std::map<int, int> &last_read, std::map<int, std::string> &messages, int &message_index);
 

@@ -140,6 +140,10 @@ int main(int argc, char**argv)
                     continue;
                 }
 
+                memset(&sendline, 0, sizeof(sendline));
+                send_str = "Submit " + to_string(message_length) + " " + message + "\n";
+                strncpy(sendline, send_str.c_str(), sizeof(sendline));
+
                 n = send(session_sock, sendline, strlen(sendline), 0);
                 if (n < 0)
                 {
@@ -152,8 +156,7 @@ int main(int argc, char**argv)
         }
         else if (strncmp(sendline, "GetNext\n", 8) == 0)
         {
-            send_str = "GetNext";
-            strncpy(sendline, send_str.c_str(), sizeof(sendline));
+            sendline[7] = '\0';
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
             {
                 printf("Error sending message: %s. Have you started or joined a chat session?\n", strerror(errno));
@@ -185,8 +188,7 @@ int main(int argc, char**argv)
         }
         else if (strncmp(sendline, "GetAll\n", 7) == 0)
         {
-            send_str = "GetAll";
-            strncpy(sendline, send_str.c_str(), sizeof(sendline));
+            sendline[6] = '\0';
             if (send(session_sock, sendline, strlen(sendline), 0) < 0)
             {
                 printf("Error sending message: %s. Have you started or joined a chat session?\n", strerror(errno));
