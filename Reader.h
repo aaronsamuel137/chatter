@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <stdio.h>
 
 // Scans through a char array and keeps track of how much it has read and the size of the array
 class Reader
