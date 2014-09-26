@@ -150,7 +150,7 @@ int main(int argc, char**argv)
                 if (LOGGING) printf("sent message: %s\n", message.c_str());
             }
         }
-        else if (strncmp(sendline, "GetNext", 7) == 0)
+        else if (strncmp(sendline, "GetNext\n", 8) == 0)
         {
             send_str = "GetNext";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
@@ -183,7 +183,7 @@ int main(int argc, char**argv)
                 printf("%s\n", message.c_str());
             }
         }
-        else if (strncmp(sendline, "GetAll", 6) == 0)
+        else if (strncmp(sendline, "GetAll\n", 7) == 0)
         {
             send_str = "GetAll";
             strncpy(sendline, send_str.c_str(), sizeof(sendline));
@@ -233,12 +233,12 @@ int main(int argc, char**argv)
 
             if (LOGGING) printf("All messages got\n");
         }
-        else if (strncmp(sendline, "Leave", 5) == 0)
+        else if (strncmp(sendline, "Leave\n", 6) == 0)
         {
             leave(session_sock, s_name);
             s_name = ""; // reset s_name to be an empty string
         }
-        else if (strncmp(sendline, "Exit", 4) == 0)
+        else if (strncmp(sendline, "Exit\n", 5) == 0)
         {
             printf("Bye!\n");
             exit(0);
