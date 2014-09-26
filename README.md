@@ -42,3 +42,7 @@ to and from integer format in the code. I realize both of these things could hav
 differently, but it was not clear in the spec which method was preferred. The client and server
 work together as expected, but might not work with other implementations of the spec that do
 not space delimit or send integers as chars over the wire.
+
+acknowledgements
+----------------
+Some code snippets are taken from the echo client and server example files
